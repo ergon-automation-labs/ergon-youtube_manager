@@ -78,12 +78,29 @@ mix test --only handlers
 mix test --include integration
 ```
 
-## Next Steps (Phase 2)
+## Phase 2: Real Analytics & Storage
 
-- [ ] Wire YouTube API credentials (OAuth2 setup)
-- [ ] Implement PARA filesystem writing for summaries
-- [ ] Create GTD task creation from recommendations
-- [ ] Wire Discord notification integration
+**Setup:**
+- [ ] **Get YouTube API Credentials** — Follow [docs/YOUTUBE_API_SETUP.md](docs/YOUTUBE_API_SETUP.md) (recommended: service account)
+- [ ] **Test credentials locally** — `mix test`, verify API client can authenticate
+
+**Implementation:**
+- [ ] Create Ecto schema: `VideoMetric` table (date, views, watch_time, ctr, engagement JSON, traffic JSON)
+- [ ] Implement real YouTube Analytics API calls in `Youtube.ApiClient`
+- [ ] Store daily metrics in PostgreSQL (upsert by video_id + date)
+- [ ] Generate summaries from stored metrics (not mock data)
+- [ ] Publish `youtube.insights.generated` → para bot listens and writes PARA files
+
+**Testing:**
+- [ ] Integration test hitting real YouTube API (with `@tag :integration`)
+- [ ] Verify metrics stored correctly in PostgreSQL
+
+## Phase 3+
+
+- [ ] Para bot integration (listen for `youtube.insights.generated`)
+- [ ] Create GTD task creation from recommendations (bridge.task.create)
+- [ ] Wire Discord notification integration (bridge.discord.message.send)
+- [ ] Anomaly detection logic (view drops, spikes, engagement mismatches)
 - [ ] Add forecasting model for content performance
 - [ ] Generalize patterns for social media template (LinkedIn, etc.)
 
