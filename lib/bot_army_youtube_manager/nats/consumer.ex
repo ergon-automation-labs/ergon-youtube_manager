@@ -18,9 +18,31 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
   # Register subjects with their metadata for runtime discovery
   @subjects [
-    # Add your subjects here:
-    # %{subject: "example.task.list", type: :request_reply, description: "List tasks"},
-    # %{subject: "example.event.>", type: :subscribe, description: "Example events"}
+    %{
+      subject: "youtube.analytics.fetch",
+      type: :request_reply,
+      description: "Fetch YouTube analytics data"
+    },
+    %{
+      subject: "youtube.summary.generate",
+      type: :request_reply,
+      description: "Generate weekly summary"
+    },
+    %{
+      subject: "youtube.analytics.updated",
+      type: :publish,
+      description: "Published when analytics are updated"
+    },
+    %{
+      subject: "youtube.insights.generated",
+      type: :publish,
+      description: "Published when insights are generated"
+    },
+    %{
+      subject: "youtube.alert.performance",
+      type: :publish,
+      description: "Published for performance anomalies"
+    }
   ]
 
   def start_link(opts) do
@@ -89,9 +111,12 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       # Handle request/reply patterns
       if msg.reply_to do
         case msg.topic do
-          # Add your request/reply handlers here
-          # "example.task.list" ->
-          #   handle_task_list(msg, state)
+          "youtube.analytics.fetch" ->
+            handle_analytics_fetch(msg, state)
+
+          "youtube.summary.generate" ->
+            handle_summary_generate(msg, state)
+
           _ ->
             Logger.debug("Unknown request/reply subject: #{msg.topic}")
         end
@@ -135,18 +160,59 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   end
 
   # Request/reply handlers
-  # defp handle_task_list(msg, state) do
-  #   response =
-  #     case get_tasks() do
-  #       {:ok, tasks} ->
-  #         BotArmyRuntime.NATS.Reply.ok(%{"tasks" => tasks})
-  #
-  #       {:error, reason} ->
-  #         BotArmyRuntime.NATS.Reply.error(inspect(reason), :list_failed)
-  #     end
-  #
-  #   if state.conn do
-  #     Gnat.pub(state.conn, msg.reply_to, response)
-  #   end
-  # end
+  defp handle_analytics_fetch(msg, state) do
+    case BotArmyCore.NATS.Decoder.decode(msg.body) do
+      {:ok, payload} ->
+        case BotArmyYoutubeManager.Handlers.AnalyticsHandler.handle(payload, %{}) do
+          {:ok, result} ->
+            response = BotArmyRuntime.NATS.Reply.ok(result)
+
+            if state.conn do
+              Gnat.pub(state.conn, msg.reply_to, response)
+            end
+
+          {:error, reason} ->
+            response = BotArmyRuntime.NATS.Reply.error(reason, :analytics_failed)
+
+            if state.conn do
+              Gnat.pub(state.conn, msg.reply_to, response)
+            end
+        end
+
+      {:error, reason} ->
+        response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+
+        if state.conn do
+          Gnat.pub(state.conn, msg.reply_to, response)
+        end
+    end
+  end
+
+  defp handle_summary_generate(msg, state) do
+    case BotArmyCore.NATS.Decoder.decode(msg.body) do
+      {:ok, payload} ->
+        case BotArmyYoutubeManager.Handlers.SummaryHandler.handle(payload, %{}) do
+          {:ok, result} ->
+            response = BotArmyRuntime.NATS.Reply.ok(result)
+
+            if state.conn do
+              Gnat.pub(state.conn, msg.reply_to, response)
+            end
+
+          {:error, reason} ->
+            response = BotArmyRuntime.NATS.Reply.error(reason, :summary_failed)
+
+            if state.conn do
+              Gnat.pub(state.conn, msg.reply_to, response)
+            end
+        end
+
+      {:error, reason} ->
+        response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+
+        if state.conn do
+          Gnat.pub(state.conn, msg.reply_to, response)
+        end
+    end
+  end
 end
