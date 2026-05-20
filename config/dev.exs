@@ -10,3 +10,9 @@ config :bot_army_youtube_manager, BotArmyYoutubeManager.Repo,
   stacktrace: true,
   show_sensitive_data_on_error: true,
   pool_size: 10
+
+# OAuth 2.0 redirect URI for local development
+# Change this to match your local setup (e.g., http://localhost:5000/oauth/callback)
+config :bot_army_youtube_manager,
+  oauth_redirect_uri:
+    System.get_env("YOUTUBE_OAUTH_REDIRECT_URI") || "http://localhost:8888/oauth/callback"

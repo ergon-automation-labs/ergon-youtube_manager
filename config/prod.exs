@@ -10,3 +10,8 @@ config :bot_army_youtube_manager, BotArmyYoutubeManager.Repo,
   stacktrace: false,
   show_sensitive_data_on_error: false,
   pool_size: 20
+
+# OAuth 2.0 configuration (set by Salt state)
+config :bot_army_youtube_manager,
+  oauth_redirect_uri:
+    System.get_env("YOUTUBE_OAUTH_REDIRECT_URI") || "http://air.internal/oauth/callback"
