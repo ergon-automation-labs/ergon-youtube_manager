@@ -88,6 +88,13 @@ defmodule Mix.Tasks.OauthInit do
     # Step 3: Exchange code for tokens
     IO.puts("")
     IO.puts("Step 3: Exchanging code for tokens...")
+    IO.puts("  Client ID: #{String.slice(client_id, 0..10)}...")
+
+    IO.puts(
+      "  Redirect URI: #{System.get_env("YOUTUBE_OAUTH_REDIRECT_URI") || "http://localhost:8080/oauth/callback"}"
+    )
+
+    IO.puts("")
 
     case BotArmyYoutubeManager.Youtube.OAuth.exchange_code_for_token(code) do
       {:ok, tokens} ->

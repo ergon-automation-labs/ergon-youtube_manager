@@ -1,5 +1,5 @@
 {application,bot_army_runtime,
-             [{config_mtime,1779235133},
+             [{config_mtime,1779289966},
               {compile_env,[{bot_army_runtime,[auto_start_services],error}]},
               {optional_applications,[]},
               {applications,[kernel,stdlib,elixir,logger,inets,jason,ecto_sql,

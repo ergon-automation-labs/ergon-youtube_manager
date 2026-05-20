@@ -47,14 +47,13 @@ defmodule BotArmyYoutubeManager.Youtube.OAuth do
     client_secret = Application.get_env(:bot_army_youtube_manager, :oauth_client_secret)
 
     if client_id && client_secret do
-      body =
-        URI.encode_query(%{
-          code: code,
-          client_id: client_id,
-          client_secret: client_secret,
-          redirect_uri: redirect_uri(),
-          grant_type: "authorization_code"
-        })
+      body = %{
+        code: code,
+        client_id: client_id,
+        client_secret: client_secret,
+        redirect_uri: redirect_uri(),
+        grant_type: "authorization_code"
+      }
 
       case post_token_request(body) do
         {:ok, tokens} ->
@@ -76,13 +75,12 @@ defmodule BotArmyYoutubeManager.Youtube.OAuth do
     client_secret = Application.get_env(:bot_army_youtube_manager, :oauth_client_secret)
 
     if client_id && client_secret do
-      body =
-        URI.encode_query(%{
-          client_id: client_id,
-          client_secret: client_secret,
-          refresh_token: refresh_token,
-          grant_type: "refresh_token"
-        })
+      body = %{
+        client_id: client_id,
+        client_secret: client_secret,
+        refresh_token: refresh_token,
+        grant_type: "refresh_token"
+      }
 
       case post_token_request(body) do
         {:ok, tokens} ->
@@ -111,12 +109,15 @@ defmodule BotArmyYoutubeManager.Youtube.OAuth do
   end
 
   defp post_token_request(body) do
-    case Req.post(@token_endpoint, body: body) do
+    case Req.post(@token_endpoint, json: body) do
       {:ok, response} ->
         data = response.body
 
         if is_map(data) && Map.has_key?(data, "error") do
-          {:error, Map.get(data, "error_description", "Unknown error")}
+          error = Map.get(data, "error")
+          description = Map.get(data, "error_description", "")
+          msg = if description != "", do: "#{error}: #{description}", else: error
+          {:error, msg}
         else
           {:ok, data}
         end
