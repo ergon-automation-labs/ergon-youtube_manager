@@ -14,6 +14,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   require Logger
 
   @reconnect_delay_ms 5000
+  @registry_heartbeat_ms 20_000
   @version Mix.Project.config()[:version]
 
   # Register subjects with their metadata for runtime discovery
@@ -66,7 +67,8 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
     state = %{
       subscriptions: [],
       conn: nil,
-      opts: opts
+      opts: opts,
+      registry_registered?: false
     }
 
     {:ok, state, {:continue, :connect}}
@@ -101,8 +103,10 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
         # Register subjects for runtime discovery
         BotArmyRuntime.Registry.register("youtube_manager", @subjects, @version)
+        Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
 
-        {:noreply, %{state | subscriptions: subscriptions, conn: conn}}
+        {:noreply,
+         %{state | subscriptions: subscriptions, conn: conn, registry_registered?: true}}
 
       {:error, _reason} ->
         Logger.warning("NATS connection not ready, will retry")
@@ -155,10 +159,20 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   end
 
   @impl true
+  def handle_info(:registry_heartbeat, state) do
+    if state.registry_registered? and state.subscriptions != [] do
+      BotArmyRuntime.Registry.register("youtube_manager", @subjects, @version)
+      Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
+    end
+
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_info({:nats, :disconnected}, state) do
     Logger.warning("Disconnected from NATS, will reconnect")
     Process.send_after(self(), :connect_retry, @reconnect_delay_ms)
-    {:noreply, %{state | subscriptions: [], conn: nil}}
+    {:noreply, %{state | subscriptions: [], conn: nil, registry_registered?: false}}
   end
 
   @impl true
