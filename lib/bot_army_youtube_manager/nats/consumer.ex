@@ -296,12 +296,21 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   defp publish_summary_to_para(result, state) do
     case result do
       %{para_path: path, markdown: markdown} ->
-        payload = %{
-          "path" => path,
-          "content" => markdown
+        event = %{
+          "event_id" => UUID.uuid4(),
+          "event" => "para.fs.write",
+          "schema_version" => "1.0",
+          "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
+          "source" => "youtube_manager_bot",
+          "source_node" => "air",
+          "triggered_by" => "system",
+          "payload" => %{
+            "path" => path,
+            "content" => markdown
+          }
         }
 
-        {:ok, encoded} = Jason.encode(payload)
+        {:ok, encoded} = Jason.encode(event)
 
         if state.conn do
           Gnat.pub(state.conn, "para.fs.write", encoded)
