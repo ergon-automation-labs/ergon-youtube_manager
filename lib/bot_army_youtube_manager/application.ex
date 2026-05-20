@@ -52,7 +52,7 @@ defmodule BotArmyYoutubeManager.Application do
       # Bot-specific workers and pollers go here (GenServers that do async work)
       # Examples: Scheduler, Poller, Watcher
       # Pattern: gated with if @env == :test to prevent long-running processes in test
-      children
+      [{BotArmyYoutubeManager.NATS.Consumer, []} | children]
     end
   end
 end
