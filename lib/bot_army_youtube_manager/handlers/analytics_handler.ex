@@ -6,6 +6,7 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
 
   require Logger
   alias BotArmyYoutubeManager.Analytics.{Collector, AnomalyDetector}
+  alias BotArmyYoutubeManager.Learning.Recorder
   alias BotArmyYoutubeManager.Discord.Publisher
 
   def handle(payload, _opts) do
@@ -21,9 +22,20 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
   end
 
   defp fetch_and_store_analytics(_payload) do
-    with {:ok, stored_metrics} <- Collector.collect_daily_metrics(),
-         {:ok, anomalies} <- AnomalyDetector.detect_anomalies(stored_metrics) do
+    with {:ok, stored_metrics} <- Collector.collect_daily_metrics() do
+      anomalies_with_video = AnomalyDetector.detect_anomalies_per_video(stored_metrics)
       Logger.info("Analytics collected and stored", metric_count: length(stored_metrics))
+
+      # Record all anomaly decisions for learning
+      Enum.each(anomalies_with_video, fn {type, reason, severity, video_id} ->
+        Recorder.record_decision(type, video_id, %{reason: reason, severity: severity})
+      end)
+
+      # Flatten for alert publishing (remove video_id)
+      anomalies =
+        Enum.map(anomalies_with_video, fn {type, reason, severity, _vid} ->
+          {type, reason, severity}
+        end)
 
       if length(anomalies) > 0 do
         publish_anomaly_alerts(anomalies)

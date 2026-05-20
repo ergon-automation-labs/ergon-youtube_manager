@@ -23,6 +23,23 @@ defmodule BotArmyYoutubeManager.Analytics.AnomalyDetector do
 
   def detect_anomalies(_), do: {:ok, []}
 
+  def detect_anomalies_per_video(metrics) when is_list(metrics) and length(metrics) > 0 do
+    metrics
+    |> Enum.group_by(& &1.video_id)
+    |> Enum.flat_map(fn {video_id, video_metrics} ->
+      anomalies = []
+      anomalies = check_view_drops(video_metrics, anomalies)
+      anomalies = check_engagement_drops(video_metrics, anomalies)
+      anomalies = check_ctr_drops(video_metrics, anomalies)
+
+      Enum.map(anomalies, fn {type, reason, severity} ->
+        {type, reason, severity, video_id}
+      end)
+    end)
+  end
+
+  def detect_anomalies_per_video(_), do: []
+
   defp check_view_drops(metrics, anomalies) do
     views = metrics |> Enum.map(&Map.get(&1, :views, 0)) |> Enum.filter(&(&1 > 0))
 
