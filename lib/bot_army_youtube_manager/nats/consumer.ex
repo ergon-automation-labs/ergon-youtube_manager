@@ -154,7 +154,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   end
 
   # Message routing
-  defp route_message(message, topic) do
+  defp route_message(_message, topic) do
     # Route decoded messages to appropriate handlers
     Logger.debug("Routing message from #{topic}")
   end

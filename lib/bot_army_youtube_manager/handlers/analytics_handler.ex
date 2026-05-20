@@ -4,7 +4,7 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
   """
 
   require Logger
-  alias BotArmyYoutubeManager.Youtube.ApiClient
+  alias BotArmyYoutubeManager.Analytics.Collector
 
   def handle(payload, _opts) do
     Logger.info("Processing analytics fetch request", payload: payload)
@@ -19,17 +19,16 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
   end
 
   defp fetch_and_store_analytics(_payload) do
-    # Fetch channel-level metrics
-    with {:ok, channel_data} <- ApiClient.fetch_channel_metrics() do
-      Logger.info("Analytics collected", video_count: length(channel_data.videos))
+    with {:ok, stored_metrics} <- Collector.collect_daily_metrics() do
+      Logger.info("Analytics collected and stored", metric_count: length(stored_metrics))
 
       {:ok,
        %{
          event_id: generate_event_id(),
          timestamp: DateTime.utc_now(),
-         channel_metrics: channel_data,
+         metrics_stored: length(stored_metrics),
          status: "collected",
-         videos_analyzed: length(channel_data.videos)
+         sample_metrics: Enum.take(stored_metrics, 5)
        }}
     end
   end

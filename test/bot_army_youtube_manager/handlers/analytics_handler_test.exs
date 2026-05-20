@@ -15,13 +15,14 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandlerTest do
       assert result.timestamp
     end
 
-    test "includes channel metrics in response" do
+    test "includes stored metrics count in response" do
       payload = %{}
 
       {:ok, result} = AnalyticsHandler.handle(payload, %{})
 
-      assert Map.has_key?(result, :channel_metrics)
-      assert is_integer(result.videos_analyzed)
+      assert Map.has_key?(result, :metrics_stored)
+      assert is_integer(result.metrics_stored)
+      assert is_list(result.sample_metrics)
     end
   end
 end
