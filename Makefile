@@ -23,9 +23,9 @@ help:
 	@echo "  make format          - Format Elixir code"
 	@echo "  make clean           - Clean build artifacts"
 	@echo ""
-	@echo "Operations:"
+	@echo "Operations (production NATS :4222 - credentials on Air only):"
 	@echo "  make logs                      - Tail server log"
-	@echo "  make test-analytics-fetch      - Test analytics collection (requires running bot + NATS on :4223)"
+	@echo "  make test-analytics-fetch      - Test analytics collection from YouTube (Air bot + :4222 NATS)"
 	@echo "  make schedule-daily-analytics  - Schedule daily analytics via dispatcher (requires dispatcher bot)"
 	@echo ""
 	@echo "Release commands:"
@@ -160,12 +160,12 @@ logs:
 	@$(SCRIPTS_DIRECTORY)/tail_bot_log.sh
 
 test-analytics-fetch:
-	@echo "Testing analytics fetch request..."
-	@nats request --server nats://localhost:4223 youtube.analytics.fetch '{}' --timeout 5s
+	@echo "Testing analytics fetch request (production NATS - credentials on Air only)..."
+	@nats request --server nats://localhost:4222 youtube.analytics.fetch '{}' --timeout 10s
 
 schedule-daily-analytics:
-	@echo "Scheduling daily YouTube analytics collection via dispatcher..."
-	@nats request --server nats://localhost:4223 dispatcher.schedule.job '{ \
+	@echo "Scheduling daily YouTube analytics collection via dispatcher (production NATS)..."
+	@nats request --server nats://localhost:4222 dispatcher.schedule.job '{ \
 		"job_id": "youtube-daily-analytics", \
 		"subject": "youtube.analytics.fetch", \
 		"schedule": "0 9 * * *", \
