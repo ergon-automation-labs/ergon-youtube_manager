@@ -33,14 +33,12 @@ defmodule BotArmyYoutubeManager.Release do
   end
 
   defp migrate_repo(repo) do
-    app = Keyword.fetch!(repo.__adapter__.__info__(:attributes), :app)
-    migrations_path = Path.join([priv_dir(app), "repo", "migrations"])
+    migrations_path =
+      Path.join([Application.app_dir(:bot_army_youtube_manager), "priv", "repo", "migrations"])
 
     opts = [all: true]
 
     {:ok, _fun, _apps} =
       Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, migrations_path, :up, opts))
   end
-
-  defp priv_dir(app), do: Path.join([Application.app_dir(app), "priv"])
 end
