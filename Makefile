@@ -1,7 +1,7 @@
 SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
 MIX ?= /Users/abby/.local/share/mise/shims/mix
 
-.PHONY: setup help deps test credo dialyzer coverage check format clean release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init
+.PHONY: setup help deps test credo dialyzer coverage check format clean release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init test-analytics-fetch schedule-daily-analytics
 
 help:
 	@echo "YouTube Manager Bot"
@@ -23,8 +23,10 @@ help:
 	@echo "  make format          - Format Elixir code"
 	@echo "  make clean           - Clean build artifacts"
 	@echo ""
-	@echo "Operations (deployed server logs):"
-	@echo "  make logs            - Tail server log with grc (auto-detected by repo name; make -C .. install-grc)"
+	@echo "Operations:"
+	@echo "  make logs                      - Tail server log"
+	@echo "  make test-analytics-fetch      - Test analytics collection (requires running bot + NATS on :4223)"
+	@echo "  make schedule-daily-analytics  - Schedule daily analytics via dispatcher (requires dispatcher bot)"
 	@echo ""
 	@echo "Release commands:"
 	@echo "  make release         - Build OTP release locally"
@@ -156,3 +158,17 @@ push-and-publish:
 
 logs:
 	@$(SCRIPTS_DIRECTORY)/tail_bot_log.sh
+
+test-analytics-fetch:
+	@echo "Testing analytics fetch request..."
+	@nats request --server nats://localhost:4223 youtube.analytics.fetch '{}' --timeout 5s
+
+schedule-daily-analytics:
+	@echo "Scheduling daily YouTube analytics collection via dispatcher..."
+	@nats request --server nats://localhost:4223 dispatcher.schedule.job '{ \
+		"job_id": "youtube-daily-analytics", \
+		"subject": "youtube.analytics.fetch", \
+		"schedule": "0 9 * * *", \
+		"timezone": "America/Denver", \
+		"payload": {} \
+	}' --timeout 5s
