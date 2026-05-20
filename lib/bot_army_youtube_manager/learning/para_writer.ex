@@ -164,7 +164,7 @@ defmodule BotArmyYoutubeManager.Learning.ParaWriter do
     month = start_date.month |> Integer.to_string() |> String.pad_leading(2, "0")
     week = Calendar.ISO.week_of_year(start_date) |> elem(0)
 
-    "/YouTube/Analytics/#{year}-#{month}/weekly-#{week}.md"
+    "projects/YouTube/Analytics/#{year}-#{month}/weekly-#{week}.md"
   end
 
   defp bot_version do

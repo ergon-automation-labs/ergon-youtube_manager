@@ -297,7 +297,8 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
     case result do
       %{para_path: path, markdown: markdown} ->
         payload = %{
-          "path" => path,
+          "schema_version" => "1.0",
+          "relative_path" => path,
           "content" => markdown
         }
 
