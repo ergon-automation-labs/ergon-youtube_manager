@@ -295,7 +295,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
   defp publish_summary_to_para(result, state) do
     case result do
-      %{"para_path" => path, "markdown" => markdown} ->
+      %{para_path: path, markdown: markdown} ->
         payload = %{
           "path" => path,
           "content" => markdown
@@ -309,7 +309,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         end
 
       _ ->
-        Logger.warn("Summary missing required fields for PARA write")
+        Logger.warn("Summary missing required fields for PARA write", result: inspect(result))
     end
   end
 
