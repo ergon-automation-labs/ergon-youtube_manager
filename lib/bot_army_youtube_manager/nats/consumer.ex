@@ -301,7 +301,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
           "content" => markdown
         }
 
-        encoded = BotArmyCore.NATS.Encoder.encode(payload)
+        {:ok, encoded} = Jason.encode(payload)
 
         if state.conn do
           Gnat.pub(state.conn, "para.fs.write", encoded)
@@ -309,7 +309,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         end
 
       _ ->
-        Logger.warn("Summary missing required fields for PARA write", result: inspect(result))
+        Logger.warning("Summary missing required fields for PARA write", result: inspect(result))
     end
   end
 
