@@ -1,5 +1,8 @@
 import Config
 
+# Configure ecto repos for migrations and schema generation
+config :bot_army_youtube_manager, ecto_repos: [BotArmyYoutubeManager.Repo]
+
 # Read database config from environment (set by Salt via /etc/bot_army/youtube_manager_bot.env)
 config :bot_army_youtube_manager, BotArmyYoutubeManager.Repo,
   username: System.get_env("DB_USER") || "postgres",

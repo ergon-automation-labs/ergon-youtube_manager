@@ -8,6 +8,7 @@
               {modules,['Elixir.BotArmyYoutubeManager.Analytics.AnomalyDetector',
                         'Elixir.BotArmyYoutubeManager.Analytics.Collector',
                         'Elixir.BotArmyYoutubeManager.Application',
+                        'Elixir.BotArmyYoutubeManager.Discord.Publisher',
                         'Elixir.BotArmyYoutubeManager.HTTPClient',
                         'Elixir.BotArmyYoutubeManager.HTTPClient.Req',
                         'Elixir.BotArmyYoutubeManager.Handlers.AnalyticsHandler',
