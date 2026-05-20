@@ -195,6 +195,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         case BotArmyYoutubeManager.Handlers.SummaryHandler.handle(payload, %{}) do
           {:ok, result} ->
             publish_summary_to_para(result, state)
+            publish_summary_to_discord(result)
             response = BotArmyRuntime.NATS.Reply.ok(result)
 
             if state.conn do
@@ -236,5 +237,9 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       _ ->
         Logger.warn("Summary missing required fields for PARA write")
     end
+  end
+
+  defp publish_summary_to_discord(result) do
+    BotArmyYoutubeManager.Discord.Publisher.publish_summary_to_discord(result)
   end
 end

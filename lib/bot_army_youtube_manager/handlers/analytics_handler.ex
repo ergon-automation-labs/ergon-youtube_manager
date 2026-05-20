@@ -6,6 +6,7 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
 
   require Logger
   alias BotArmyYoutubeManager.Analytics.{Collector, AnomalyDetector}
+  alias BotArmyYoutubeManager.Discord.Publisher
 
   def handle(payload, _opts) do
     Logger.info("Processing analytics fetch request", payload: payload)
@@ -26,6 +27,7 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
 
       if length(anomalies) > 0 do
         publish_anomaly_alerts(anomalies)
+        Publisher.publish_anomalies_to_discord(anomalies)
       end
 
       {:ok,
