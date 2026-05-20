@@ -6,6 +6,7 @@ defmodule BotArmyYoutubeManager.Handlers.SummaryHandler do
 
   require Logger
   alias BotArmyYoutubeManager.Analytics.Collector
+  alias BotArmyYoutubeManager.Learning.ParaWriter
 
   def handle(payload, _opts) do
     Logger.info("Processing weekly summary request", payload: payload)
@@ -48,15 +49,40 @@ defmodule BotArmyYoutubeManager.Handlers.SummaryHandler do
       trends: detect_trends(metrics)
     }
 
-    {:ok,
-     %{
-       event_id: generate_event_id(),
-       timestamp: DateTime.utc_now(),
-       summary: summary,
-       markdown: format_summary_markdown(summary),
-       status: "ready_for_para",
-       para_path: "projects/Bot Army/YouTube Analytics/weekly_summaries/#{end_date}.md"
-     }}
+    # Generate enhanced markdown with learning insights
+    enhanced_result =
+      try do
+        ParaWriter.generate_para_summary(start_date, end_date)
+      rescue
+        _ ->
+          # Fallback if ParaWriter encounters errors (like in test mode)
+          {:error, "ParaWriter unavailable"}
+      end
+
+    case enhanced_result do
+      {:ok, %{path: para_path, markdown: enhanced_markdown}} ->
+        {:ok,
+         %{
+           event_id: generate_event_id(),
+           timestamp: DateTime.utc_now(),
+           summary: summary,
+           markdown: enhanced_markdown,
+           status: "ready_for_para",
+           para_path: para_path
+         }}
+
+      {:error, _reason} ->
+        # Fallback to basic markdown if learning system fails
+        {:ok,
+         %{
+           event_id: generate_event_id(),
+           timestamp: DateTime.utc_now(),
+           summary: summary,
+           markdown: format_summary_markdown(summary),
+           status: "ready_for_para",
+           para_path: "projects/Bot Army/YouTube Analytics/weekly_summaries/#{end_date}.md"
+         }}
+    end
   end
 
   defp sum_field(metrics, field) do
