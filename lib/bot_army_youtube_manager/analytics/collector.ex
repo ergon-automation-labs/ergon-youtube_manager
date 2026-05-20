@@ -8,6 +8,8 @@ defmodule BotArmyYoutubeManager.Analytics.Collector do
   alias BotArmyYoutubeManager.{Repo, Schemas.VideoMetric}
   alias BotArmyYoutubeManager.Youtube.ApiClient
 
+  @env Mix.env()
+
   @spec collect_daily_metrics() :: {:ok, list(map())} | {:error, String.t()}
   def collect_daily_metrics do
     Logger.info("Starting daily metrics collection")
@@ -82,7 +84,7 @@ defmodule BotArmyYoutubeManager.Analytics.Collector do
   @spec get_metrics_for_range(Date.t(), Date.t()) :: list(VideoMetric)
   def get_metrics_for_range(start_date, end_date) do
     # In test mode, Repo is not started, return empty list
-    if Mix.env() == :test do
+    if @env == :test do
       []
     else
       from(vm in VideoMetric,
