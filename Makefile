@@ -1,7 +1,7 @@
 SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
 MIX ?= /Users/abby/.local/share/mise/shims/mix
 
-.PHONY: setup help deps test credo dialyzer coverage check format clean release publish-release setup-hooks setup-db reset-db logs push-and-publish
+.PHONY: setup help deps test credo dialyzer coverage check format clean release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init
 
 help:
 	@echo "YouTube Manager Bot"
@@ -11,6 +11,8 @@ help:
 	@echo "  make setup-hooks     - Install git hooks for pre-push validation"
 	@echo "  make setup-db        - Create and migrate test database (required for testing)"
 	@echo "  make reset-db        - Drop and recreate test database (useful for troubleshooting)"
+	@echo "  make oauth-init      - Initialize YouTube OAuth 2.0 credentials (one-time setup)"
+	@echo "                         Usage: make oauth-init CLIENT_ID=<id> CLIENT_SECRET=<secret>"
 	@echo ""
 	@echo "Development commands:"
 	@echo "  make test            - Run all tests"
@@ -58,6 +60,21 @@ reset-db:
 	@MIX_ENV=test $(MIX) ecto.create
 	@MIX_ENV=test $(MIX) ecto.migrate
 	@echo "✓ Test database reset complete"
+
+oauth-init:
+	@if [ -z "$(CLIENT_ID)" ] || [ -z "$(CLIENT_SECRET)" ]; then \
+		echo "ERROR: Missing OAuth credentials"; \
+		echo ""; \
+		echo "Usage: make oauth-init CLIENT_ID=<your_client_id> CLIENT_SECRET=<your_client_secret>"; \
+		echo ""; \
+		echo "To get credentials:"; \
+		echo "  1. Go to https://console.cloud.google.com/apis/credentials"; \
+		echo "  2. Create OAuth 2.0 Web Application credentials"; \
+		echo "  3. Copy Client ID and Client Secret"; \
+		exit 1; \
+	fi
+	@echo "Starting YouTube OAuth 2.0 initial authorization..."
+	@YOUTUBE_OAUTH_CLIENT_ID="$(CLIENT_ID)" YOUTUBE_OAUTH_CLIENT_SECRET="$(CLIENT_SECRET)" $(MIX) oauth_init
 
 init:
 	@if [ ! -d .git ]; then git init; echo "Git initialized."; else echo "Git already initialized."; fi
