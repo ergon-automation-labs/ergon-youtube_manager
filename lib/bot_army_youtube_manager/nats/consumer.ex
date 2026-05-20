@@ -296,25 +296,21 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   defp publish_summary_to_para(result, state) do
     case result do
       %{para_path: path, markdown: markdown} ->
-        event = %{
-          "event_id" => UUID.uuid4(),
-          "event" => "para.fs.write",
-          "schema_version" => "1.0",
-          "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
-          "source" => "youtube_manager_bot",
-          "source_node" => "air",
-          "triggered_by" => "system",
-          "payload" => %{
-            "path" => path,
-            "content" => markdown
-          }
+        payload = %{
+          "path" => path,
+          "content" => markdown
         }
 
-        {:ok, encoded} = Jason.encode(event)
+        {:ok, encoded} = Jason.encode(payload)
 
         if state.conn do
-          Gnat.pub(state.conn, "para.fs.write", encoded)
-          Logger.info("Published summary to PARA", path: path)
+          case Gnat.request(state.conn, "para.fs.write", encoded, receive_timeout: 5000) do
+            {:ok, _response} ->
+              Logger.info("Published summary to PARA", path: path)
+
+            {:error, reason} ->
+              Logger.error("Failed to write summary to PARA", path: path, reason: inspect(reason))
+          end
         end
 
       _ ->
