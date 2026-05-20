@@ -130,7 +130,7 @@ publish-release: release
 	TARBALL="youtube_manager_bot-$$VERSION.tar.gz"; \
 	echo "Version: $$VERSION"; \
 	echo "Creating release tarball..."; \
-	tar -czf "$$TARBALL" -C _build/prod/rel youtube_manager_bot/; \
+	tar -czf "$$TARBALL" -C _build/prod/rel --transform 's,youtube_manager_bot,youtube_manager_bot-'$$VERSION',' youtube_manager_bot/; \
 	echo "✓ Tarball created: $$TARBALL"; \
 	echo ""; \
 	echo "Creating GitHub release v$$VERSION..."; \
