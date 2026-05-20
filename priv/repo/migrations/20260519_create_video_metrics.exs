@@ -14,11 +14,13 @@ defmodule BotArmyYoutubeManager.Repo.Migrations.CreateVideoMetrics do
       add(:click_through_rate, :float, default: 0.0)
 
       # Engagement (JSON for flexibility)
-      add(:engagement, :jsonb, default: "{'likes': 0, 'comments': 0, 'shares': 0, 'saves': 0}")
+      add(:engagement, :jsonb,
+        default: "{\"likes\": 0, \"comments\": 0, \"shares\": 0, \"saves\": 0}"
+      )
 
       # Traffic sources (JSON for flexibility)
       add(:traffic_sources, :jsonb,
-        default: "{'search': 0, 'browse': 0, 'suggested': 0, 'direct': 0, 'other': 0}"
+        default: "{\"search\": 0, \"browse\": 0, \"suggested\": 0, \"direct\": 0, \"other\": 0}"
       )
 
       # Subscriber changes

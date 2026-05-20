@@ -71,7 +71,8 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
         subscriptions =
           [
-            # Add your subjects here
+            "youtube.analytics.fetch",
+            "youtube.summary.generate"
           ]
           |> Enum.map(fn subject ->
             case Gnat.sub(conn, self(), subject) do
