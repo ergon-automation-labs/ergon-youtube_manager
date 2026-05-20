@@ -29,6 +29,11 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       description: "Generate weekly summary"
     },
     %{
+      subject: "youtube.learning.validate",
+      type: :request_reply,
+      description: "Validate anomaly detection predictions"
+    },
+    %{
       subject: "youtube.analytics.updated",
       type: :publish,
       description: "Published when analytics are updated"
@@ -72,7 +77,8 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         subscriptions =
           [
             "youtube.analytics.fetch",
-            "youtube.summary.generate"
+            "youtube.summary.generate",
+            "youtube.learning.validate"
           ]
           |> Enum.map(fn subject ->
             case Gnat.sub(conn, self(), subject) do
@@ -117,6 +123,9 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
           "youtube.summary.generate" ->
             handle_summary_generate(msg, state)
+
+          "youtube.learning.validate" ->
+            handle_learning_validate(msg, state)
 
           _ ->
             Logger.debug("Unknown request/reply subject: #{msg.topic}")
@@ -204,6 +213,34 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
           {:error, reason} ->
             response = BotArmyRuntime.NATS.Reply.error(reason, :summary_failed)
+
+            if state.conn do
+              Gnat.pub(state.conn, msg.reply_to, response)
+            end
+        end
+
+      {:error, reason} ->
+        response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+
+        if state.conn do
+          Gnat.pub(state.conn, msg.reply_to, response)
+        end
+    end
+  end
+
+  defp handle_learning_validate(msg, state) do
+    case BotArmyCore.NATS.Decoder.decode(msg.body) do
+      {:ok, payload} ->
+        case BotArmyYoutubeManager.Handlers.ValidationHandler.handle(payload, %{}) do
+          {:ok, result} ->
+            response = BotArmyRuntime.NATS.Reply.ok(result)
+
+            if state.conn do
+              Gnat.pub(state.conn, msg.reply_to, response)
+            end
+
+          {:error, reason} ->
+            response = BotArmyRuntime.NATS.Reply.error(reason, :validation_failed)
 
             if state.conn do
               Gnat.pub(state.conn, msg.reply_to, response)
