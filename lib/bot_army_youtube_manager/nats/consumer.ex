@@ -194,6 +194,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       {:ok, payload} ->
         case BotArmyYoutubeManager.Handlers.SummaryHandler.handle(payload, %{}) do
           {:ok, result} ->
+            publish_summary_to_para(result, state)
             response = BotArmyRuntime.NATS.Reply.ok(result)
 
             if state.conn do
@@ -214,6 +215,26 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         if state.conn do
           Gnat.pub(state.conn, msg.reply_to, response)
         end
+    end
+  end
+
+  defp publish_summary_to_para(result, state) do
+    case result do
+      %{"para_path" => path, "markdown" => markdown} ->
+        payload = %{
+          "path" => path,
+          "content" => markdown
+        }
+
+        encoded = BotArmyCore.NATS.Encoder.encode(payload)
+
+        if state.conn do
+          Gnat.pub(state.conn, "para.fs.write", encoded)
+          Logger.info("Published summary to PARA", path: path)
+        end
+
+      _ ->
+        Logger.warn("Summary missing required fields for PARA write")
     end
   end
 end
