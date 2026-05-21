@@ -8,6 +8,7 @@ defmodule BotArmyYoutubeManager.Youtube.ApiClient do
 
   require Logger
 
+  @env Mix.env()
   @analytics_endpoint "https://youtubeanalytics.googleapis.com/v2/reports"
 
   @spec fetch_video_metrics(String.t(), map()) :: {:ok, map()} | {:error, String.t()}
@@ -33,7 +34,7 @@ defmodule BotArmyYoutubeManager.Youtube.ApiClient do
   end
 
   defp get_access_token do
-    if Mix.env() == :test do
+    if @env == :test do
       {:ok, "test_access_token"}
     else
       case BotArmyYoutubeManager.Youtube.OAuth.get_valid_access_token() do
