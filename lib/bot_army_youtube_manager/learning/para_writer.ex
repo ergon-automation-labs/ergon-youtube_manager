@@ -16,6 +16,32 @@ defmodule BotArmyYoutubeManager.Learning.ParaWriter do
     Schemas.LearningOptimizationProposal
   }
 
+  def write_to_para(path, markdown) do
+    Logger.info("Writing PARA summary", path: path)
+
+    content_b64 = Base.encode64(markdown)
+
+    payload =
+      Jason.encode!(%{
+        "schema_version" => "1.0",
+        "relative_path" => path,
+        "content_base64" => content_b64,
+        "mode" => "write"
+      })
+
+    with {:ok, conn} <-
+           GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000),
+         {:ok, raw} <- Gnat.request(conn, "para.fs.write", payload, receive_timeout: 15_000),
+         {:ok, resp} <- Jason.decode(raw.body) do
+      if resp["ok"] do
+        Logger.info("PARA write successful", path: path)
+        {:ok, path}
+      else
+        {:error, resp["error"]}
+      end
+    end
+  end
+
   def generate_para_summary(start_date, end_date) do
     Logger.info("Generating PARA summary for #{start_date} to #{end_date}")
 

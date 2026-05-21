@@ -1,7 +1,7 @@
 SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
 MIX ?= /Users/abby/.local/share/mise/shims/mix
 
-.PHONY: setup help deps test credo dialyzer coverage check format clean release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init test-analytics-fetch schedule-daily-analytics
+.PHONY: setup help deps test credo dialyzer coverage check format clean clean-releases release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init test-analytics-fetch test-summary-generate schedule-daily-analytics
 
 help:
 	@echo "YouTube Manager Bot"
@@ -26,11 +26,13 @@ help:
 	@echo "Operations (production NATS :4222 - credentials on Air only):"
 	@echo "  make logs                      - Tail server log"
 	@echo "  make test-analytics-fetch      - Test analytics collection from YouTube (Air bot + :4222 NATS)"
+	@echo "  make test-summary-generate     - Test weekly summary generation and PARA write (Air bot + :4222 NATS)"
 	@echo "  make schedule-daily-analytics  - Schedule daily analytics via dispatcher (requires dispatcher bot)"
 	@echo ""
 	@echo "Release commands:"
 	@echo "  make release         - Build OTP release locally"
 	@echo "  make publish-release - Build, package, and publish to GitHub"
+	@echo "  make clean-releases  - Remove old deployed releases, keep 3 latest"
 	@echo ""
 	@echo "Normal workflow:"
 	@echo "  git push             - Fast compile+test validation"
@@ -106,6 +108,23 @@ clean:
 	$(MIX) clean
 	rm -rf _build cover
 
+clean-releases:
+	@echo "Cleaning old releases..."
+	@if [ ! -d "/opt/ergon/releases/youtube_manager_bot/releases" ]; then \
+		echo "No deployed releases found (not on Air node or not deployed yet)"; \
+		exit 0; \
+	fi
+	@cd /opt/ergon/releases/youtube_manager_bot/releases && \
+		ls -1d youtube_manager_bot-* 2>/dev/null | \
+		grep -v '^youtube_manager_bot$$' | \
+		sort -V -r | \
+		tail -n +4 | \
+		while read dir; do \
+			echo "Removing $$dir"; \
+			rm -rf "$$dir"; \
+		done
+	@echo "Done. Kept 3 latest releases."
+
 release: test
 	@echo "==============================================="
 	@echo "Building OTP release"
@@ -162,6 +181,10 @@ logs:
 test-analytics-fetch:
 	@echo "Testing analytics fetch request (production NATS - credentials on Air only)..."
 	@nats request --server nats://localhost:4222 youtube.analytics.fetch '{}' --timeout 10s
+
+test-summary-generate:
+	@echo "Testing summary generation and PARA write (production NATS)..."
+	@nats request --server nats://localhost:4222 youtube.summary.generate '{}' --timeout 5s
 
 schedule-daily-analytics:
 	@echo "Scheduling daily YouTube analytics collection via dispatcher (production NATS)..."
