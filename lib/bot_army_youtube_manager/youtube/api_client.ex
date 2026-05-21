@@ -47,7 +47,7 @@ defmodule BotArmyYoutubeManager.Youtube.ApiClient do
   defp fetch_metrics(video_id, access_token, _opts) do
     Logger.info("Fetching metrics for video: #{video_id}")
 
-    if Mix.env() == :test do
+    if @env == :test do
       {:ok,
        %{
          video_id: video_id,
@@ -81,7 +81,7 @@ defmodule BotArmyYoutubeManager.Youtube.ApiClient do
   defp fetch_channel_data(access_token, _opts) do
     Logger.info("Fetching channel analytics data")
 
-    if Mix.env() == :test do
+    if @env == :test do
       {:ok,
        %{
          channel_id: nil,
