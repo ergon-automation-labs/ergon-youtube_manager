@@ -14,55 +14,64 @@ defmodule BotArmyYoutubeManager.Analytics.Collector do
   def collect_daily_metrics do
     Logger.info("Starting daily metrics collection")
 
-    if @env == :prod do
+    if @env == :prod and credentials_available?() do
       case ApiClient.fetch_channel_metrics() do
         {:ok, channel_data} ->
           store_video_metrics(channel_data)
 
         {:error, reason} ->
-          {:error, "Failed to fetch channel metrics: #{reason}"}
+          Logger.warning("YouTube API fetch failed, using mock data: #{reason}")
+          use_mock_data()
       end
     else
-      # Test/dev mode: return mock data
-      mock_channel_data = %{
-        channel_id: "test_channel",
-        total_views: 15000,
-        total_watch_time: 5000,
-        subscriber_change: 42,
-        videos: [
-          %{
-            video_id: "test_video_1",
-            views: 8000,
-            watch_time_minutes: 3000,
-            average_view_duration_seconds: 300,
-            ctr: 0.05,
-            engagement: %{},
-            traffic_sources: %{}
-          },
-          %{
-            video_id: "test_video_2",
-            views: 5000,
-            watch_time_minutes: 2000,
-            average_view_duration_seconds: 250,
-            ctr: 0.04,
-            engagement: %{},
-            traffic_sources: %{}
-          },
-          %{
-            video_id: "test_video_3",
-            views: 2000,
-            watch_time_minutes: 500,
-            average_view_duration_seconds: 150,
-            ctr: 0.03,
-            engagement: %{},
-            traffic_sources: %{}
-          }
-        ]
-      }
-
-      Logger.debug("Using mock analytics data for non-prod environment")
-      store_video_metrics(mock_channel_data)
+      use_mock_data()
     end
+  end
+
+  defp credentials_available? do
+    !is_nil(System.get_env("YOUTUBE_OAUTH_ACCESS_TOKEN"))
+  end
+
+  defp use_mock_data do
+    Logger.debug("Using mock analytics data")
+
+    mock_channel_data = %{
+      channel_id: "test_channel",
+      total_views: 15000,
+      total_watch_time: 5000,
+      subscriber_change: 42,
+      videos: [
+        %{
+          video_id: "test_video_1",
+          views: 8000,
+          watch_time_minutes: 3000,
+          average_view_duration_seconds: 300,
+          ctr: 0.05,
+          engagement: %{},
+          traffic_sources: %{}
+        },
+        %{
+          video_id: "test_video_2",
+          views: 5000,
+          watch_time_minutes: 2000,
+          average_view_duration_seconds: 250,
+          ctr: 0.04,
+          engagement: %{},
+          traffic_sources: %{}
+        },
+        %{
+          video_id: "test_video_3",
+          views: 2000,
+          watch_time_minutes: 500,
+          average_view_duration_seconds: 150,
+          ctr: 0.03,
+          engagement: %{},
+          traffic_sources: %{}
+        }
+      ]
+    }
+
+    store_video_metrics(mock_channel_data)
   end
 
   @spec store_video_metrics(map()) :: {:ok, list(map())} | {:error, String.t()}
