@@ -129,7 +129,8 @@ release: test
 	@echo "==============================================="
 	@echo "Building OTP release"
 	@echo "==============================================="
-	rm -rf _build/prod/rel/youtube_manager_bot
+	rm -rf _build/prod
+	MIX_ENV=prod $(MIX) compile --force
 	MIX_ENV=prod $(MIX) release
 	@echo ""
 	@echo "✓ Release built successfully"
