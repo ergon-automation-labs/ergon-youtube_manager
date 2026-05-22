@@ -95,11 +95,24 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
                 sub
 
               {:error, reason} ->
-                Logger.error("Failed to subscribe to #{subject}: #{inspect(reason)}")
+                Logger.error("CRITICAL: Failed to subscribe to #{subject}: #{inspect(reason)}")
                 nil
             end
           end)
           |> Enum.filter(&(not is_nil(&1)))
+
+        active_count = length(subscriptions)
+        expected_count = 4
+
+        case active_count do
+          ^expected_count ->
+            Logger.info("[Consumer] All 4 subscriptions active")
+
+          _ ->
+            Logger.error(
+              "[Consumer] WARNING: Only #{active_count}/#{expected_count} subscriptions active!"
+            )
+        end
 
         # Register subjects for runtime discovery
         BotArmyRuntime.Registry.register("youtube_manager", @subjects, @version)
@@ -194,29 +207,59 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
   # Request/reply handlers
   defp handle_analytics_fetch(msg, state) do
-    case BotArmyCore.NATS.Decoder.decode(msg.body) do
-      {:ok, payload} ->
-        case BotArmyYoutubeManager.Handlers.AnalyticsHandler.handle(payload, %{}) do
-          {:ok, result} ->
-            response = BotArmyRuntime.NATS.Reply.ok(result)
+    Logger.info("[AnalyticsFetch] Received request, reply_to=#{msg.reply_to}")
 
-            if state.conn do
-              Gnat.pub(state.conn, msg.reply_to, response)
-            end
+    try do
+      Logger.debug("[AnalyticsFetch] Decoding payload")
 
-          {:error, reason} ->
-            response = BotArmyRuntime.NATS.Reply.error(reason, :analytics_failed)
+      case BotArmyCore.NATS.Decoder.decode(msg.body) do
+        {:ok, payload} ->
+          Logger.debug("[AnalyticsFetch] Payload decoded successfully")
 
-            if state.conn do
-              Gnat.pub(state.conn, msg.reply_to, response)
-            end
-        end
+          case BotArmyYoutubeManager.Handlers.AnalyticsHandler.handle(payload, %{}) do
+            {:ok, result} ->
+              Logger.info("[AnalyticsFetch] Handler succeeded, preparing response")
+              response = BotArmyRuntime.NATS.Reply.ok(result)
 
-      {:error, reason} ->
-        response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+              if state.conn do
+                Logger.info("[AnalyticsFetch] Publishing response")
+                Gnat.pub(state.conn, msg.reply_to, response)
+              else
+                Logger.error("[AnalyticsFetch] No NATS connection available!")
+              end
+
+            {:error, reason} ->
+              Logger.error("[AnalyticsFetch] Handler failed: #{inspect(reason)}")
+              response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :analytics_failed)
+
+              if state.conn do
+                Gnat.pub(state.conn, msg.reply_to, response)
+              else
+                Logger.error("[AnalyticsFetch] No NATS connection available!")
+              end
+          end
+
+        {:error, reason} ->
+          Logger.error("[AnalyticsFetch] Decode failed: #{inspect(reason)}")
+          response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+
+          if state.conn do
+            Gnat.pub(state.conn, msg.reply_to, response)
+          else
+            Logger.error("[AnalyticsFetch] No NATS connection available!")
+          end
+      end
+    rescue
+      e ->
+        Logger.error("[AnalyticsFetch] Handler crashed: #{inspect(e)}")
+
+        response =
+          BotArmyRuntime.NATS.Reply.error("Handler exception: #{inspect(e)}", :handler_crash)
 
         if state.conn do
           Gnat.pub(state.conn, msg.reply_to, response)
+        else
+          Logger.error("[AnalyticsFetch] No NATS connection available!")
         end
     end
   end

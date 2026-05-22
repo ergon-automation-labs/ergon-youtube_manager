@@ -181,11 +181,11 @@ logs:
 
 test-analytics-fetch:
 	@echo "Testing analytics fetch request (production NATS - credentials on Air only)..."
-	@nats request --server nats://localhost:4222 youtube.analytics.fetch '{}' --timeout 10s
+	@nats request --server nats://localhost:4222 youtube.analytics.fetch '{"event_id":"'$$(uuidgen | tr '[:upper:]' '[:lower:]')'","event":"youtube.analytics.fetch","schema_version":"1.0","timestamp":"'$$(date -u +%Y-%m-%dT%H:%M:%SZ)'","source":"manual","source_node":"manual","triggered_by":"user","payload":{}}' --timeout 10s
 
 test-summary-generate:
 	@echo "Testing summary generation and PARA write (production NATS)..."
-	@nats request --server nats://localhost:4222 youtube.summary.generate '{}' --timeout 5s
+	@nats request --server nats://localhost:4222 youtube.summary.generate '{"event_id":"'$$(uuidgen | tr '[:upper:]' '[:lower:]')'","event":"youtube.summary.generate","schema_version":"1.0","timestamp":"'$$(date -u +%Y-%m-%dT%H:%M:%SZ)'","source":"manual","source_node":"manual","triggered_by":"user","payload":{}}' --timeout 5s
 
 schedule-daily-analytics:
 	@echo "Scheduling daily YouTube analytics collection via dispatcher (production NATS)..."
