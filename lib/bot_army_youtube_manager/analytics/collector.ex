@@ -48,7 +48,8 @@ defmodule BotArmyYoutubeManager.Analytics.Collector do
           average_view_duration_seconds: 300,
           ctr: 0.05,
           engagement: %{},
-          traffic_sources: %{}
+          traffic_sources: %{},
+          subscriber_change: 12
         },
         %{
           video_id: "test_video_2",
@@ -57,7 +58,8 @@ defmodule BotArmyYoutubeManager.Analytics.Collector do
           average_view_duration_seconds: 250,
           ctr: 0.04,
           engagement: %{},
-          traffic_sources: %{}
+          traffic_sources: %{},
+          subscriber_change: 8
         },
         %{
           video_id: "test_video_3",
@@ -66,7 +68,8 @@ defmodule BotArmyYoutubeManager.Analytics.Collector do
           average_view_duration_seconds: 150,
           ctr: 0.03,
           engagement: %{},
-          traffic_sources: %{}
+          traffic_sources: %{},
+          subscriber_change: 3
         }
       ]
     }
