@@ -71,7 +71,7 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
          metrics_stored: length(stored_metrics),
          anomalies_detected: length(anomalies),
          status: "collected",
-         sample_metrics: Enum.take(stored_metrics, 5),
+         sample_metrics: [],
          anomalies: anomalies,
          para_path: para_path
        }}
