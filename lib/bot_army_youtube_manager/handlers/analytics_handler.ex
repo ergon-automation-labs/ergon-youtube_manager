@@ -49,14 +49,19 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
         Publisher.publish_anomalies_to_discord(anomalies)
       end
 
-      # Phase 3: write daily PARA summary (fails gracefully in test mode)
+      # Phase 3: write daily PARA summary (fails gracefully if dependencies missing)
       today = Date.utc_today()
 
       para_path =
         try do
           write_daily_para_summary(today)
         rescue
-          RuntimeError -> nil
+          _e ->
+            Logger.warning(
+              "[AnalyticsHandler] Failed to write PARA summary, continuing without it"
+            )
+
+            nil
         end
 
       {:ok,
