@@ -12,6 +12,7 @@ defmodule BotArmyYoutubeManager.Repo.Migrations.CreateLearningTables do
       add(:was_correct, :boolean, null: false)
       add(:recorded_at, :utc_datetime, null: false)
       add(:inserted_at, :utc_datetime, null: false, default: fragment("NOW()"))
+      add(:updated_at, :utc_datetime, null: false, default: fragment("NOW()"))
     end
 
     create(index(:learning_outcomes, [:category, :item_id]))
