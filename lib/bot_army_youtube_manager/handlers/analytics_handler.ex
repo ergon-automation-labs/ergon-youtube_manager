@@ -26,9 +26,16 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
       anomalies_with_video = AnomalyDetector.detect_anomalies_per_video(stored_metrics)
       Logger.info("Analytics collected and stored", metric_count: length(stored_metrics))
 
-      # Record all anomaly decisions for learning
+      # Record all anomaly decisions for learning (fails gracefully if table doesn't exist)
       Enum.each(anomalies_with_video, fn {type, reason, severity, video_id} ->
-        Recorder.record_decision(type, video_id, %{reason: reason, severity: severity})
+        try do
+          Recorder.record_decision(type, video_id, %{reason: reason, severity: severity})
+        rescue
+          _e ->
+            Logger.warning(
+              "[AnalyticsHandler] Failed to record anomaly decision for #{video_id}: #{type}"
+            )
+        end
       end)
 
       # Flatten for alert publishing (remove video_id)
