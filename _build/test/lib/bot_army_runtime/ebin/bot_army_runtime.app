@@ -1,5 +1,5 @@
 {application,bot_army_runtime,
-             [{config_mtime,1779395737},
+             [{config_mtime,1779403700},
               {compile_env,[{bot_army_runtime,[auto_start_services],error}]},
               {optional_applications,[]},
               {applications,[kernel,stdlib,elixir,logger,inets,jason,ecto_sql,
@@ -59,5 +59,5 @@
                         'Elixir.BotArmyRuntime.ThemeRenderer',
                         'Elixir.BotArmyRuntime.Tracing']},
               {registered,[]},
-              {vsn,"0.14.27"},
+              {vsn,"0.14.28"},
               {mod,{'Elixir.BotArmyRuntime.Application',[]}}]}.

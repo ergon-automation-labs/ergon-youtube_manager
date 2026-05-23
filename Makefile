@@ -1,7 +1,7 @@
-SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
+SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../../elixir_bots/scripts)
 MIX ?= /Users/abby/.local/share/mise/shims/mix
 
-.PHONY: setup help deps test credo dialyzer coverage check format clean clean-releases release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init test-analytics-fetch test-summary-generate schedule-daily-analytics
+.PHONY: setup help deps test credo dialyzer coverage check format clean clean-releases release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init oauth-refresh test-analytics-fetch test-summary-generate schedule-daily-analytics
 
 help:
 	@echo "YouTube Manager Bot"
@@ -13,6 +13,8 @@ help:
 	@echo "  make reset-db        - Drop and recreate test database (useful for troubleshooting)"
 	@echo "  make oauth-init      - Initialize YouTube OAuth 2.0 credentials (one-time setup)"
 	@echo "                         Usage: make oauth-init CLIENT_ID=<id> CLIENT_SECRET=<secret>"
+	@echo "  make oauth-refresh   - Refresh the YouTube access token (when 401 errors appear)"
+	@echo "                         Requires YOUTUBE_REFRESH_TOKEN env var to be set."
 	@echo ""
 	@echo "Development commands:"
 	@echo "  make test            - Run all tests"
@@ -79,6 +81,57 @@ oauth-init:
 	fi
 	@echo "Starting YouTube OAuth 2.0 initial authorization..."
 	@YOUTUBE_OAUTH_CLIENT_ID="$(CLIENT_ID)" YOUTUBE_OAUTH_CLIENT_SECRET="$(CLIENT_SECRET)" $(MIX) oauth_init
+
+oauth-refresh:
+	@echo "Refreshing YouTube OAuth access token..."
+	@echo ""
+	@if [ -z "$(YOUTUBE_REFRESH_TOKEN)" ]; then \
+		echo "ERROR: YOUTUBE_REFRESH_TOKEN is not set."; \
+		echo "Usage: make oauth-refresh YOUTUBE_REFRESH_TOKEN=<refresh_token>"; \
+		echo "Get it from /etc/bot_army/youtube_manager_bot.env (YOUTUBE_OAUTH_REFRESH_TOKEN)"; \
+		exit 1; \
+	fi
+	@. /etc/bot_army/youtube_manager_bot.env; \
+	echo "Requesting new access token from Google..."; \
+	RESPONSE=$$(curl -s -X POST https://oauth2.googleapis.com/token \
+		-d "client_id=$$YOUTUBE_OAUTH_CLIENT_ID" \
+		-d "client_secret=$$YOUTUBE_OAUTH_CLIENT_SECRET" \
+		-d "refresh_token=$(YOUTUBE_REFRESH_TOKEN)" \
+		-d "grant_type=refresh_token"); \
+	NEW_TOKEN=$$(echo "$$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token','ERROR: '+str(d)))"); \
+	if [ "$$NEW_TOKEN" = "ERROR"* ]; then \
+		echo "Failed to get new token. Raw response:"; \
+		echo "$$RESPONSE"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "========================================"; \
+	echo "YOUTUBE MANAGER OAUTH TOKEN REFRESH"; \
+	echo "========================================"; \
+	echo ""; \
+	echo "Add this to salt/pillar/youtube_manager.sls (NOT committed to git):"; \
+	echo ""; \
+	echo "  youtube_manager:"; \
+	echo "    oauth_access_token: \"$$NEW_TOKEN\""; \
+	echo ""; \
+	echo "Then apply with:"; \
+	echo "  cd ~/code/bots/bot_army_infra && make apply-bot BOT=youtube_manager_bot"
+
+oauth-update-token:
+	@if [ -z "$(NEW_TOKEN)" ]; then \
+		echo "ERROR: NEW_TOKEN is not set."; \
+		echo "Usage: make oauth-update-token NEW_TOKEN=<new_access_token>"; \
+		echo ""; \
+		echo "Run 'make oauth-refresh' first to get a fresh token."; \
+		exit 1; \
+	fi
+	@echo "Updating YOUTUBE_OAUTH_ACCESS_TOKEN in /etc/bot_army/youtube_manager_bot.env..."
+	@$(SCRIPTS_DIRECTORY)/update_env_token.sh youtube_manager_bot YOUTUBE_OAUTH_ACCESS_TOKEN "$(NEW_TOKEN)"
+	@echo "✓ Token updated"
+	@echo ""
+	@echo "Restarting bot to pick up new token..."
+	@sudo launchctl kickstart -k gui/$(id -u)/com.botarmy.youtube_manager_bot 2>/dev/null || \
+		echo "(restart queued — bot will pick up new token on next launch)"
 
 init:
 	@if [ ! -d .git ]; then git init; echo "Git initialized."; else echo "Git already initialized."; fi
