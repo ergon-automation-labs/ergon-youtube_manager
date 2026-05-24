@@ -59,11 +59,9 @@ defmodule BotArmyYoutubeManager.ExampleTest do
   # ============================================================================
 
   defp module_exists?(module) do
-    try do
-      module.__info__(:module)
-      true
-    rescue
-      _ -> false
-    end
+    module.__info__(:module)
+    true
+  rescue
+    _ -> false
   end
 end

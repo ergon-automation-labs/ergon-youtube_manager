@@ -8,7 +8,7 @@ defmodule BotArmyYoutubeManager.Analytics.AnomalyDetector do
 
   require Logger
 
-  def detect_anomalies(metrics) when is_list(metrics) and length(metrics) > 0 do
+  def detect_anomalies(metrics) when is_list(metrics) and metrics != [] do
     anomalies = []
     anomalies = check_view_drops(metrics, anomalies)
     anomalies = check_engagement_drops(metrics, anomalies)
@@ -23,7 +23,7 @@ defmodule BotArmyYoutubeManager.Analytics.AnomalyDetector do
 
   def detect_anomalies(_), do: {:ok, []}
 
-  def detect_anomalies_per_video(metrics) when is_list(metrics) and length(metrics) > 0 do
+  def detect_anomalies_per_video(metrics) when is_list(metrics) and metrics != [] do
     metrics
     |> Enum.group_by(& &1.video_id)
     |> Enum.flat_map(fn {video_id, video_metrics} ->

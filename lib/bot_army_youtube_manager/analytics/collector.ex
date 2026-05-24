@@ -37,8 +37,8 @@ defmodule BotArmyYoutubeManager.Analytics.Collector do
 
     mock_channel_data = %{
       channel_id: "test_channel",
-      total_views: 15000,
-      total_watch_time: 5000,
+      total_views: 15_000,
+      total_watch_time: 5_000,
       subscriber_change: 42,
       videos: [
         %{

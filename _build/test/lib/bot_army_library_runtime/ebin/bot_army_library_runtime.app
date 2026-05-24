@@ -1,5 +1,5 @@
 {application,bot_army_library_runtime,
-    [{config_mtime,1779542338},
+    [{config_mtime,1779555653},
      {compile_env,[{bot_army_library_runtime,[auto_start_services],error}]},
      {optional_applications,[]},
      {applications,
@@ -16,6 +16,7 @@
           'Elixir.BotArmyRuntime.DeferTracker',
           'Elixir.BotArmyRuntime.Ecto.MigrationRunner',
           'Elixir.BotArmyRuntime.Ecto.Repo',
+          'Elixir.BotArmyRuntime.FactoryFixerQueue',
           'Elixir.BotArmyRuntime.GossipPollAffinity',
           'Elixir.BotArmyRuntime.GtdPollAllocator',
           'Elixir.BotArmyRuntime.Health.Monitor',
@@ -58,5 +59,5 @@
           'Elixir.BotArmyRuntime.ThemeRenderer',
           'Elixir.BotArmyRuntime.Tracing']},
      {registered,[]},
-     {vsn,"0.14.34"},
+     {vsn,"0.14.35"},
      {mod,{'Elixir.BotArmyRuntime.Application',[]}}]}.

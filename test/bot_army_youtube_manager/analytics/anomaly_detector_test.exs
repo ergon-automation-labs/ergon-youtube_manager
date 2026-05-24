@@ -25,7 +25,7 @@ defmodule BotArmyYoutubeManager.Analytics.AnomalyDetectorTest do
       ]
 
       {:ok, anomalies} = AnomalyDetector.detect_anomalies(metrics)
-      assert length(anomalies) > 0
+      refute Enum.empty?(anomalies)
       assert Enum.any?(anomalies, fn {type, _reason, _severity} -> type == "view_drop" end)
     end
 

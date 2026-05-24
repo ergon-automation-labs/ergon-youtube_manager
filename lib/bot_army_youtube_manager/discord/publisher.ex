@@ -27,7 +27,7 @@ defmodule BotArmyYoutubeManager.Discord.Publisher do
     end
   end
 
-  def publish_anomalies_to_discord(anomalies) when is_list(anomalies) and length(anomalies) > 0 do
+  def publish_anomalies_to_discord(anomalies) when is_list(anomalies) and anomalies != [] do
     message = build_anomaly_embeds(anomalies)
     publish_to_discord(message)
   end

@@ -44,7 +44,7 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
           {type, reason, severity}
         end)
 
-      if length(anomalies) > 0 do
+      if anomalies != [] do
         publish_anomaly_alerts(anomalies)
         Publisher.publish_anomalies_to_discord(anomalies)
       end

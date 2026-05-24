@@ -1,5 +1,5 @@
 {application,bot_army_youtube_manager,
-             [{config_mtime,1779490589},
+             [{config_mtime,1779543433},
               {optional_applications,[]},
               {applications,[kernel,stdlib,elixir,logger,
                              bot_army_library_core,bot_army_library_runtime,
@@ -33,5 +33,5 @@
                         'Elixir.BotArmyYoutubeManager.Youtube.OAuth',
                         'Elixir.Mix.Tasks.OauthInit']},
               {registered,[]},
-              {vsn,"0.4.20"},
+              {vsn,"0.4.21"},
               {mod,{'Elixir.BotArmyYoutubeManager.Application',[]}}]}.
