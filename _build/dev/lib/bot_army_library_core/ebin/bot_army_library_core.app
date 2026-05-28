@@ -1,5 +1,5 @@
 {application,bot_army_library_core,
-             [{config_mtime,1779506559},
+             [{config_mtime,1779671969},
               {optional_applications,[]},
               {applications,[kernel,stdlib,elixir,logger,httpoison,jason,
                              logger_json,ex_json_schema,
@@ -19,5 +19,5 @@
                         'Elixir.BotArmyCore.NATS.Decoder',
                         'Elixir.BotArmyCore.Tenant']},
               {registered,[]},
-              {vsn,"0.3.6"},
+              {vsn,"0.3.7"},
               {mod,{'Elixir.BotArmyCore.Application',[]}}]}.

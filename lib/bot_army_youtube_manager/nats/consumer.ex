@@ -115,7 +115,16 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         end
 
         # Register subjects for runtime discovery
-        BotArmyRuntime.Registry.register("youtube_manager", @subjects, @version)
+        deployment_status =
+          Application.get_env(:bot_army_youtube_manager, :deployment_status, "deployed")
+
+        BotArmyRuntime.Registry.register(
+          "youtube_manager",
+          @subjects,
+          @version,
+          deployment_status
+        )
+
         Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
 
         {:noreply,
