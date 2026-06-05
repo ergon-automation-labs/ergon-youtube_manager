@@ -17,6 +17,7 @@
                         'Elixir.BotArmyCore.GraphRepo',
                         'Elixir.BotArmyCore.NATS',
                         'Elixir.BotArmyCore.NATS.Decoder',
+                        'Elixir.BotArmyCore.OutcomesEmitter',
                         'Elixir.BotArmyCore.Tenant']},
               {registered,[]},
               {vsn,"0.3.7"},

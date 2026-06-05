@@ -11,6 +11,10 @@ defmodule BotArmyYoutubeManager.Release do
 
   alias BotArmyRuntime.Ecto.MigrationRunner
 
+  def create_database do
+    Ecto.Repo.create(BotArmyYoutubeManager.Repo)
+  end
+
   def migrate do
     MigrationRunner.run(
       repo_module: BotArmyYoutubeManager.Repo,
