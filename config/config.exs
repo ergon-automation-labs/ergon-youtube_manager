@@ -1,11 +1,14 @@
 import Config
 
 # Configure logging
-config :logger, :console,
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
+config :logger,
+  level: :info,
+  backends: [:console],
+  default_formatter: {BotArmyRuntime.LoggerFormatter, []}
 
-# Configure Ecto
+config :logger, :console,
+  format: {BotArmyRuntime.LoggerFormatter, []},
+  metadata: [:correlation_id]
 config :bot_army_youtube_manager,
   ecto_repos: [BotArmyYoutubeManager.Repo]
 
