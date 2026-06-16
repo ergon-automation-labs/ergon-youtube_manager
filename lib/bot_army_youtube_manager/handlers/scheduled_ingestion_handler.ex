@@ -55,7 +55,11 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
             {:ok, data}
 
           {:ok, %{"error" => error}} ->
-            {:error, "PARA read error: #{error}"}
+            if String.contains?(error, ["not found", "not a file"]) do
+              {:ok, ""}
+            else
+              {:error, "PARA read error: #{error}"}
+            end
 
           {:error, _} ->
             {:error, "Failed to decode PARA response"}
