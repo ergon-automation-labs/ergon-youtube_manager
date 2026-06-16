@@ -40,6 +40,11 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       description: "Generate optimization proposals from validation results"
     },
     %{
+      subject: "youtube.scheduled.ingest",
+      type: :request_reply,
+      description: "Scheduled ingestion: read capture.md, process YouTube links, update PARA"
+    },
+    %{
       subject: "youtube.analytics.updated",
       type: :publish,
       description: "Published when analytics are updated"
@@ -86,7 +91,8 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
             "youtube.analytics.fetch",
             "youtube.summary.generate",
             "youtube.learning.validate",
-            "youtube.learning.propose"
+            "youtube.learning.propose",
+            "youtube.scheduled.ingest"
           ]
           |> Enum.map(fn subject ->
             case Gnat.sub(conn, self(), subject) do
@@ -102,7 +108,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
           |> Enum.filter(&(not is_nil(&1)))
 
         active_count = length(subscriptions)
-        expected_count = 4
+        expected_count = 5
 
         case active_count do
           ^expected_count ->
@@ -161,6 +167,9 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
           "youtube.learning.propose" ->
             handle_learning_propose(msg, state)
+
+          "youtube.scheduled.ingest" ->
+            handle_scheduled_ingest(msg, state)
 
           _ ->
             Logger.debug("Unknown request/reply subject: #{msg.topic}")
@@ -377,5 +386,45 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
   defp publish_summary_to_discord(result) do
     BotArmyYoutubeManager.Discord.Publisher.publish_summary_to_discord(result)
+  end
+
+  defp handle_scheduled_ingest(msg, state) do
+    Logger.info("[ScheduledIngest] Received scheduled ingestion request")
+
+    try do
+      case BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler.handle(msg) do
+        {:ok, result} ->
+          Logger.info("[ScheduledIngest] Handler succeeded")
+          response = BotArmyRuntime.NATS.Reply.ok(result)
+
+          if state.conn do
+            Gnat.pub(state.conn, msg.reply_to, response)
+          else
+            Logger.error("[ScheduledIngest] No NATS connection available!")
+          end
+
+        {:error, reason} ->
+          Logger.error("[ScheduledIngest] Handler failed: #{inspect(reason)}")
+          response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :ingest_failed)
+
+          if state.conn do
+            Gnat.pub(state.conn, msg.reply_to, response)
+          else
+            Logger.error("[ScheduledIngest] No NATS connection available!")
+          end
+      end
+    rescue
+      e ->
+        Logger.error("[ScheduledIngest] Handler crashed: #{inspect(e)}")
+
+        response =
+          BotArmyRuntime.NATS.Reply.error("Handler exception: #{inspect(e)}", :handler_crash)
+
+        if state.conn do
+          Gnat.pub(state.conn, msg.reply_to, response)
+        else
+          Logger.error("[ScheduledIngest] No NATS connection available!")
+        end
+    end
   end
 end
