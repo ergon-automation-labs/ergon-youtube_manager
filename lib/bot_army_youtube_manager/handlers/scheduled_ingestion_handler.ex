@@ -17,7 +17,7 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
   @para_read_subject "para.fs.read"
   @para_write_subject "para.fs.write"
   @media_ingest_subject "media.ingestion.youtube.transcript.get"
-  @capture_path "youtube/inbox/capture.md"
+  @capture_path "inbox/youtube/capture.md"
   @nats_timeout 30_000
 
   def handle(msg) do

@@ -1,5 +1,5 @@
 {application,bot_army_library_core,
-             [{config_mtime,1781614963},
+             [{config_mtime,1781615778},
               {optional_applications,[]},
               {applications,[kernel,stdlib,elixir,logger,httpoison,jason,
                              logger_json,ex_json_schema,
