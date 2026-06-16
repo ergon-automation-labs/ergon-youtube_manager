@@ -1,5 +1,5 @@
 {application,bot_army_youtube_manager,
-             [{config_mtime,1780931381},
+             [{config_mtime,1781613766},
               {optional_applications,[]},
               {applications,[kernel,stdlib,elixir,logger,
                              bot_army_library_core,bot_army_library_runtime,
@@ -14,6 +14,7 @@
                         'Elixir.BotArmyYoutubeManager.HTTPClient.Req',
                         'Elixir.BotArmyYoutubeManager.Handlers.AnalyticsHandler',
                         'Elixir.BotArmyYoutubeManager.Handlers.ProposerHandler',
+                        'Elixir.BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler',
                         'Elixir.BotArmyYoutubeManager.Handlers.SummaryHandler',
                         'Elixir.BotArmyYoutubeManager.Handlers.ValidationHandler',
                         'Elixir.BotArmyYoutubeManager.Learning.ParaWriter',
@@ -33,5 +34,5 @@
                         'Elixir.BotArmyYoutubeManager.Youtube.OAuth',
                         'Elixir.Mix.Tasks.OauthInit']},
               {registered,[]},
-              {vsn,"0.4.27"},
+              {vsn,"0.4.28"},
               {mod,{'Elixir.BotArmyYoutubeManager.Application',[]}}]}.

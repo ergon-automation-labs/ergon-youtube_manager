@@ -43,7 +43,7 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
   end
 
   defp read_capture_file do
-    request_body = Jason.encode!(%{"path" => @capture_path})
+    request_body = Jason.encode!(%{"relative_path" => @capture_path})
 
     case make_request(@para_read_subject, request_body) do
       {:ok, response} ->
@@ -129,7 +129,7 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
     content = Enum.join(remaining_lines, "\n")
 
     request_body =
-      Jason.encode!(%{"path" => @capture_path, "content" => content, "mode" => "write"})
+      Jason.encode!(%{"relative_path" => @capture_path, "content" => content, "mode" => "write"})
 
     case make_request(@para_write_subject, request_body) do
       {:ok, response} ->

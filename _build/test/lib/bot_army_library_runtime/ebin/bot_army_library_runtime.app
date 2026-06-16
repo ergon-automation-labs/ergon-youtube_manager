@@ -1,5 +1,5 @@
 {application,bot_army_library_runtime,
-    [{config_mtime,1780931381},
+    [{config_mtime,1781450033},
      {compile_env,[{bot_army_library_runtime,[auto_start_services],error}]},
      {optional_applications,[]},
      {applications,
@@ -45,7 +45,7 @@
           'Elixir.BotArmyRuntime.NATS.Dedup',
           'Elixir.BotArmyRuntime.NATS.JetStream',
           'Elixir.BotArmyRuntime.NATS.Publisher',
-          'Elixir.BotArmyRuntime.NATS.Reply',
+          'Elixir.BotArmyRuntime.NATS.Reply','Elixir.BotArmyRuntime.Outcomes',
           'Elixir.BotArmyRuntime.Personality.Formatter',
           'Elixir.BotArmyRuntime.Personality.Identity',
           'Elixir.BotArmyRuntime.Personality.Observability',
@@ -60,5 +60,5 @@
           'Elixir.BotArmyRuntime.ThemeRenderer',
           'Elixir.BotArmyRuntime.Tracing']},
      {registered,[]},
-     {vsn,"0.14.44"},
+     {vsn,"0.14.48"},
      {mod,{'Elixir.BotArmyRuntime.Application',[]}}]}.
