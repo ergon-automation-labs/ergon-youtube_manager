@@ -1,24 +1,20 @@
 defmodule BotArmyYoutubeManager.Release do
   @moduledoc """
-  Release management functions for deployment tasks.
+  Release tasks for the YouTube Manager bot.
 
-  Migrations are run via the shared BotArmyRuntime.Ecto.MigrationRunner:
+  Migrations are run via the shared BotArmyLibraryRuntime.Ecto.MigrationRunner:
 
-      /path/to/youtube_manager/bin/youtube_manager eval 'BotArmyYoutubeManager.Release.migrate()'
+      /path/to/youtube_manager_bot/bin/youtube_manager_bot eval 'BotArmyYoutubeManager.Release.migrate()'
 
   Called from Salt during bot deployment, before the bot starts.
   """
 
-  alias BotArmyRuntime.Ecto.MigrationRunner
-
-  def create_database do
-    Ecto.Repo.create(BotArmyYoutubeManager.Repo)
-  end
+  @app :bot_army_youtube_manager
 
   def migrate do
-    MigrationRunner.run(
+    BotArmyLibraryRuntime.Ecto.MigrationRunner.run(
       repo_module: BotArmyYoutubeManager.Repo,
-      app_module: :bot_army_youtube_manager
+      app_module: @app
     )
   end
 end
