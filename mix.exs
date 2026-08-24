@@ -4,7 +4,7 @@ defmodule BotArmyYoutubeManager.MixProject do
   def project do
     [
       app: :bot_army_youtube_manager,
-      version: "0.4.31",
+      version: "0.4.33",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

@@ -6,8 +6,8 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   Uses standardized Reply format for request/reply patterns.
 
   All request/reply handlers should return responses using Reply helpers:
-  - BotArmyRuntime.NATS.Reply.ok(data) for success
-  - BotArmyRuntime.NATS.Reply.error(message, code) for errors
+  - BotArmyLibraryRuntime.NATS.Reply.ok(data) for success
+  - BotArmyLibraryRuntime.NATS.Reply.error(message, code) for errors
   """
 
   use GenServer
@@ -73,7 +73,9 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       subscriptions: [],
       conn: nil,
       opts: opts,
-      registry_registered?: false
+      # LeaderElection announces the real role shortly after startup; defaulting
+      # to standby means a not-yet-elected node never answers business traffic.
+      role: :standby
     }
 
     {:ok, state, {:continue, :connect}}
@@ -81,66 +83,121 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
   @impl true
   def handle_continue(:connect, state) do
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       {:ok, conn} ->
-        BotArmyRuntime.NATS.Connection.subscribe_to_status()
-        Logger.info("Connected to NATS, subscribing to topics")
+        BotArmyLibraryRuntime.NATS.Connection.subscribe_to_status()
+        state = %{state | conn: conn}
 
-        subscriptions =
-          [
-            "youtube.analytics.fetch",
-            "youtube.summary.generate",
-            "youtube.learning.validate",
-            "youtube.learning.propose",
-            "youtube.scheduled.ingest"
-          ]
-          |> Enum.map(fn subject ->
-            case Gnat.sub(conn, self(), subject) do
-              {:ok, sub} ->
-                Logger.info("Subscribed to #{subject}")
-                sub
-
-              {:error, reason} ->
-                Logger.error("CRITICAL: Failed to subscribe to #{subject}: #{inspect(reason)}")
-                nil
-            end
-          end)
-          |> Enum.filter(&(not is_nil(&1)))
-
-        active_count = length(subscriptions)
-        expected_count = 5
-
-        case active_count do
-          ^expected_count ->
-            Logger.info("[Consumer] All 4 subscriptions active")
-
-          _ ->
-            Logger.error(
-              "[Consumer] WARNING: Only #{active_count}/#{expected_count} subscriptions active!"
-            )
+        if state.role == :primary do
+          subscribe_business_subjects(state)
+        else
+          Logger.info("YouTube Manager consumer standby — not subscribing to business subjects")
+          {:noreply, register_with_role(%{state | subscriptions: []})}
         end
-
-        # Register subjects for runtime discovery
-        deployment_status =
-          Application.get_env(:bot_army_youtube_manager, :deployment_status, "deployed")
-
-        BotArmyRuntime.Registry.register(
-          "youtube_manager",
-          @subjects,
-          @version,
-          deployment_status
-        )
-
-        Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
-
-        {:noreply,
-         %{state | subscriptions: subscriptions, conn: conn, registry_registered?: true}}
 
       {:error, _reason} ->
         Logger.warning("NATS connection not ready, will retry")
         Process.send_after(self(), :connect_retry, @reconnect_delay_ms)
         {:noreply, state}
     end
+  end
+
+  @doc """
+  Called by `BotArmyLibraryRuntime.LeaderElection`'s `on_role_change` callback.
+  """
+  def leader_role_changed(role) when role in [:primary, :standby] do
+    GenServer.cast(__MODULE__, {:leader_role_changed, role})
+  end
+
+  @impl true
+  def handle_cast({:leader_role_changed, :primary}, %{conn: nil} = state) do
+    Logger.warning(
+      "YouTube Manager consumer designated PRIMARY, but NATS not connected yet — will subscribe once connected"
+    )
+
+    {:noreply, %{state | role: :primary}}
+  end
+
+  def handle_cast({:leader_role_changed, :primary}, %{subscriptions: []} = state) do
+    Logger.warning("YouTube Manager consumer becoming PRIMARY — subscribing to business subjects")
+    subscribe_business_subjects(%{state | role: :primary})
+  end
+
+  def handle_cast({:leader_role_changed, :primary}, state) do
+    {:noreply, %{state | role: :primary}}
+  end
+
+  def handle_cast({:leader_role_changed, :standby}, state) do
+    Logger.warning(
+      "YouTube Manager consumer becoming STANDBY — unsubscribing from business subjects"
+    )
+
+    if state.conn do
+      Enum.each(state.subscriptions, &Gnat.unsub(state.conn, &1))
+    end
+
+    {:noreply, register_with_role(%{state | role: :standby, subscriptions: []})}
+  end
+
+  defp subscribe_business_subjects(state) do
+    Logger.info("Connected to NATS, subscribing to topics")
+
+    subscriptions =
+      [
+        "youtube.analytics.fetch",
+        "youtube.summary.generate",
+        "youtube.learning.validate",
+        "youtube.learning.propose",
+        "youtube.scheduled.ingest"
+      ]
+      |> Enum.map(fn subject ->
+        case Gnat.sub(state.conn, self(), subject) do
+          {:ok, sub} ->
+            Logger.info("Subscribed to #{subject}")
+            sub
+
+          {:error, reason} ->
+            Logger.error("CRITICAL: Failed to subscribe to #{subject}: #{inspect(reason)}")
+            nil
+        end
+      end)
+      |> Enum.filter(&(not is_nil(&1)))
+
+    active_count = length(subscriptions)
+    expected_count = 5
+
+    case active_count do
+      ^expected_count ->
+        Logger.info("[Consumer] All 4 subscriptions active")
+
+      _ ->
+        Logger.error(
+          "[Consumer] WARNING: Only #{active_count}/#{expected_count} subscriptions active!"
+        )
+    end
+
+    {:noreply, register_with_role(%{state | subscriptions: subscriptions})}
+  end
+
+  # Registers with the fleet Registry, reflecting the current role in
+  # deployment_status so a standby node is visible but clearly not serving.
+  defp register_with_role(state) do
+    deployment_status =
+      if state.role == :primary do
+        Application.get_env(:bot_army_youtube_manager, :deployment_status, "deployed")
+      else
+        "standby"
+      end
+
+    BotArmyLibraryRuntime.Registry.register(
+      "youtube_manager",
+      @subjects,
+      @version,
+      deployment_status
+    )
+
+    Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
+    state
   end
 
   @impl true
@@ -150,7 +207,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
   @impl true
   def handle_info({:msg, msg}, state) do
-    BotArmyRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers), fn ->
+    BotArmyLibraryRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers), fn ->
       Logger.debug("Received NATS message on subject: #{msg.topic}")
 
       # Handle request/reply patterns
@@ -176,7 +233,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         end
       else
         # Handle pub/sub messages
-        case BotArmyCore.NATS.Decoder.decode(msg.body) do
+        case BotArmyLibraryCore.NATS.Decoder.decode(msg.body) do
           {:ok, decoded_message} ->
             route_message(decoded_message, msg.topic)
 
@@ -191,19 +248,14 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
   @impl true
   def handle_info(:registry_heartbeat, state) do
-    if state.registry_registered? and state.subscriptions != [] do
-      BotArmyRuntime.Registry.register("youtube_manager", @subjects, @version)
-      Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
-    end
-
-    {:noreply, state}
+    {:noreply, register_with_role(state)}
   end
 
   @impl true
   def handle_info({:nats, :disconnected}, state) do
     Logger.warning("Disconnected from NATS, will reconnect")
     Process.send_after(self(), :connect_retry, @reconnect_delay_ms)
-    {:noreply, %{state | subscriptions: [], conn: nil, registry_registered?: false}}
+    {:noreply, %{state | subscriptions: [], conn: nil}}
   end
 
   @impl true
@@ -230,14 +282,14 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
     try do
       Logger.debug("[AnalyticsFetch] Decoding payload")
 
-      case BotArmyCore.NATS.Decoder.decode(msg.body) do
+      case BotArmyLibraryCore.NATS.Decoder.decode(msg.body) do
         {:ok, payload} ->
           Logger.debug("[AnalyticsFetch] Payload decoded successfully")
 
           case BotArmyYoutubeManager.Handlers.AnalyticsHandler.handle(payload, %{}) do
             {:ok, result} ->
               Logger.info("[AnalyticsFetch] Handler succeeded, preparing response")
-              response = BotArmyRuntime.NATS.Reply.ok(result)
+              response = BotArmyLibraryRuntime.NATS.Reply.ok(result)
 
               if state.conn do
                 Logger.info("[AnalyticsFetch] Publishing response")
@@ -248,7 +300,9 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
             {:error, reason} ->
               Logger.error("[AnalyticsFetch] Handler failed: #{inspect(reason)}")
-              response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :analytics_failed)
+
+              response =
+                BotArmyLibraryRuntime.NATS.Reply.error(inspect(reason), :analytics_failed)
 
               if state.conn do
                 Gnat.pub(state.conn, msg.reply_to, response)
@@ -259,7 +313,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
         {:error, reason} ->
           Logger.error("[AnalyticsFetch] Decode failed: #{inspect(reason)}")
-          response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+          response = BotArmyLibraryRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
 
           if state.conn do
             Gnat.pub(state.conn, msg.reply_to, response)
@@ -272,7 +326,10 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         Logger.error("[AnalyticsFetch] Handler crashed: #{inspect(e)}")
 
         response =
-          BotArmyRuntime.NATS.Reply.error("Handler exception: #{inspect(e)}", :handler_crash)
+          BotArmyLibraryRuntime.NATS.Reply.error(
+            "Handler exception: #{inspect(e)}",
+            :handler_crash
+          )
 
         if state.conn do
           Gnat.pub(state.conn, msg.reply_to, response)
@@ -283,20 +340,20 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   end
 
   defp handle_summary_generate(msg, state) do
-    case BotArmyCore.NATS.Decoder.decode(msg.body) do
+    case BotArmyLibraryCore.NATS.Decoder.decode(msg.body) do
       {:ok, payload} ->
         case BotArmyYoutubeManager.Handlers.SummaryHandler.handle(payload, %{}) do
           {:ok, result} ->
             publish_summary_to_para(result, state)
             publish_summary_to_discord(result)
-            response = BotArmyRuntime.NATS.Reply.ok(result)
+            response = BotArmyLibraryRuntime.NATS.Reply.ok(result)
 
             if state.conn do
               Gnat.pub(state.conn, msg.reply_to, response)
             end
 
           {:error, reason} ->
-            response = BotArmyRuntime.NATS.Reply.error(reason, :summary_failed)
+            response = BotArmyLibraryRuntime.NATS.Reply.error(reason, :summary_failed)
 
             if state.conn do
               Gnat.pub(state.conn, msg.reply_to, response)
@@ -304,7 +361,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         end
 
       {:error, reason} ->
-        response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+        response = BotArmyLibraryRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
 
         if state.conn do
           Gnat.pub(state.conn, msg.reply_to, response)
@@ -313,18 +370,18 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   end
 
   defp handle_learning_validate(msg, state) do
-    case BotArmyCore.NATS.Decoder.decode(msg.body) do
+    case BotArmyLibraryCore.NATS.Decoder.decode(msg.body) do
       {:ok, payload} ->
         case BotArmyYoutubeManager.Handlers.ValidationHandler.handle(payload, %{}) do
           {:ok, result} ->
-            response = BotArmyRuntime.NATS.Reply.ok(result)
+            response = BotArmyLibraryRuntime.NATS.Reply.ok(result)
 
             if state.conn do
               Gnat.pub(state.conn, msg.reply_to, response)
             end
 
           {:error, reason} ->
-            response = BotArmyRuntime.NATS.Reply.error(reason, :validation_failed)
+            response = BotArmyLibraryRuntime.NATS.Reply.error(reason, :validation_failed)
 
             if state.conn do
               Gnat.pub(state.conn, msg.reply_to, response)
@@ -332,7 +389,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         end
 
       {:error, reason} ->
-        response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+        response = BotArmyLibraryRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
 
         if state.conn do
           Gnat.pub(state.conn, msg.reply_to, response)
@@ -341,18 +398,18 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   end
 
   defp handle_learning_propose(msg, state) do
-    case BotArmyCore.NATS.Decoder.decode(msg.body) do
+    case BotArmyLibraryCore.NATS.Decoder.decode(msg.body) do
       {:ok, payload} ->
         case BotArmyYoutubeManager.Handlers.ProposerHandler.handle(payload, %{}) do
           {:ok, result} ->
-            response = BotArmyRuntime.NATS.Reply.ok(result)
+            response = BotArmyLibraryRuntime.NATS.Reply.ok(result)
 
             if state.conn do
               Gnat.pub(state.conn, msg.reply_to, response)
             end
 
           {:error, reason} ->
-            response = BotArmyRuntime.NATS.Reply.error(reason, :proposal_failed)
+            response = BotArmyLibraryRuntime.NATS.Reply.error(reason, :proposal_failed)
 
             if state.conn do
               Gnat.pub(state.conn, msg.reply_to, response)
@@ -360,7 +417,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         end
 
       {:error, reason} ->
-        response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
+        response = BotArmyLibraryRuntime.NATS.Reply.error(inspect(reason), :decode_failed)
 
         if state.conn do
           Gnat.pub(state.conn, msg.reply_to, response)
@@ -395,7 +452,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       case BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler.handle(msg) do
         {:ok, result} ->
           Logger.info("[ScheduledIngest] Handler succeeded")
-          response = BotArmyRuntime.NATS.Reply.ok(result)
+          response = BotArmyLibraryRuntime.NATS.Reply.ok(result)
 
           if state.conn do
             Gnat.pub(state.conn, msg.reply_to, response)
@@ -405,7 +462,7 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
 
         {:error, reason} ->
           Logger.error("[ScheduledIngest] Handler failed: #{inspect(reason)}")
-          response = BotArmyRuntime.NATS.Reply.error(inspect(reason), :ingest_failed)
+          response = BotArmyLibraryRuntime.NATS.Reply.error(inspect(reason), :ingest_failed)
 
           if state.conn do
             Gnat.pub(state.conn, msg.reply_to, response)
@@ -418,7 +475,10 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
         Logger.error("[ScheduledIngest] Handler crashed: #{inspect(e)}")
 
         response =
-          BotArmyRuntime.NATS.Reply.error("Handler exception: #{inspect(e)}", :handler_crash)
+          BotArmyLibraryRuntime.NATS.Reply.error(
+            "Handler exception: #{inspect(e)}",
+            :handler_crash
+          )
 
         if state.conn do
           Gnat.pub(state.conn, msg.reply_to, response)

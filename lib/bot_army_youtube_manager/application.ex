@@ -16,7 +16,7 @@ defmodule BotArmyYoutubeManager.Application do
 
   @impl true
   def start(_type, _args) do
-    # Note: BotArmyRuntime.Telemetry and BotArmyRuntime.NATS.Connection are started
+    # Note: BotArmyLibraryRuntime.Telemetry and BotArmyLibraryRuntime.NATS.Connection are started
     # by bot_army_runtime automatically — do not add them here.
 
     children =
@@ -52,7 +52,19 @@ defmodule BotArmyYoutubeManager.Application do
       # Bot-specific workers and pollers go here (GenServers that do async work)
       # Examples: Scheduler, Poller, Watcher
       # Pattern: gated with if @env == :test to prevent long-running processes in test
-      [{BotArmyYoutubeManager.NATS.Consumer, []} | children]
+      [
+        # Leader/standby election for dual-node (air + mini) deployment — must
+        # start before the consumer so its first on_role_change call lands
+        # while the consumer is still connecting (not yet subscribed either way).
+        {BotArmyLibraryRuntime.LeaderElection,
+         service: "youtube_manager",
+         node_name: System.get_env("LEADER_NODE_NAME", "unknown"),
+         default_role:
+           BotArmyLibraryRuntime.LeaderElection.role_from_env("YOUTUBE_MANAGER_NODE_ROLE"),
+         on_role_change: {BotArmyYoutubeManager.NATS.Consumer, :leader_role_changed, []}},
+        {BotArmyYoutubeManager.NATS.Consumer, []}
+        | children
+      ]
     end
   end
 end

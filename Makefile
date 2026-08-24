@@ -1,7 +1,10 @@
 SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../../elixir_bots/scripts)
 MIX ?= /Users/abby/.local/share/mise/shims/mix
 
-.PHONY: setup help deps test credo dialyzer coverage check format clean clean-releases release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init oauth-refresh test-analytics-fetch test-summary-generate schedule-daily-analytics
+.PHONY: setup help deps test dialyzer coverage check format clean clean-releases release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init oauth-refresh test-analytics-fetch test-summary-generate schedule-daily-analytics
+
+_compile-impl:
+	$(MIX) compile
 
 help:
 	@echo "YouTube Manager Bot"
@@ -142,9 +145,6 @@ deps:
 test:
 	$(MIX) test
 
-credo:
-	$(MIX) credo
-
 dialyzer: deps
 	$(MIX) dialyzer
 
@@ -249,3 +249,12 @@ schedule-daily-analytics:
 		"timezone": "America/Denver", \
 		"payload": {} \
 	}' --timeout 5s
+
+# Shared targets (push, credo, pre-push-cleanup, bump-version, git-push).
+# Defined once in bot_army_infra so they cannot drift per repo.
+BOT_ARMY_COMMON_MK := $(abspath $(CURDIR)/../bot_army_infra/make/common.mk)
+ifeq ($(wildcard $(BOT_ARMY_COMMON_MK)),)
+$(warning bot_army_infra not found at $(BOT_ARMY_COMMON_MK) - shared targets unavailable)
+else
+include $(BOT_ARMY_COMMON_MK)
+endif

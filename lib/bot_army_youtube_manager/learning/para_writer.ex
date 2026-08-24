@@ -30,7 +30,7 @@ defmodule BotArmyYoutubeManager.Learning.ParaWriter do
       })
 
     with {:ok, conn} <-
-           GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000),
+           GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000),
          {:ok, raw} <- Gnat.request(conn, "para.fs.write", payload, receive_timeout: 15_000),
          {:ok, resp} <- Jason.decode(raw.body) do
       if resp["ok"] do

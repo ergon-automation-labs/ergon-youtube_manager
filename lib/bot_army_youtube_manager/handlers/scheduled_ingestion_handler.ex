@@ -12,7 +12,7 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
 
   require Logger
 
-  alias BotArmyRuntime.NATS.Reply
+  alias BotArmyLibraryRuntime.NATS.Reply
 
   @para_read_subject "para.fs.read"
   @para_write_subject "para.fs.write"
@@ -166,7 +166,7 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
   end
 
   defp make_request(subject, body) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       case Gnat.request(conn, subject, body, receive_timeout: @nats_timeout) do
         {:ok, msg} -> {:ok, msg.body}
         {:error, reason} -> {:error, reason}

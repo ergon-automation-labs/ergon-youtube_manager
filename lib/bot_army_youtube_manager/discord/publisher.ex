@@ -89,9 +89,9 @@ defmodule BotArmyYoutubeManager.Discord.Publisher do
 
   defp publish_to_discord(message) do
     subject = "surface.discord.send"
-    encoded = BotArmyCore.NATS.Encoder.encode(message)
+    encoded = BotArmyLibraryCore.NATS.Encoder.encode(message)
 
-    case BotArmyCore.NATS.publish(subject, encoded) do
+    case BotArmyLibraryCore.NATS.publish(subject, encoded) do
       {:ok, _} ->
         Logger.info("Published message to Discord", subject: subject)
         :ok
