@@ -99,7 +99,7 @@ defmodule BotArmyYoutubeManager.Handlers.AnalyticsHandler do
   defp publish_anomaly_alerts(anomalies) do
     anomalies
     |> Enum.map(fn {type, reason, severity} ->
-      Logger.warn("Anomaly detected: #{type} (#{severity}) - #{reason}")
+      Logger.warning("Anomaly detected: #{type} (#{severity}) - #{reason}")
 
       %{
         "event_type" => "anomaly",

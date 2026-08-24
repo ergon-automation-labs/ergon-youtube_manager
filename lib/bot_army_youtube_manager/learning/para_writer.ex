@@ -188,7 +188,7 @@ defmodule BotArmyYoutubeManager.Learning.ParaWriter do
   defp build_para_path(start_date) do
     year = start_date.year
     month = start_date.month |> Integer.to_string() |> String.pad_leading(2, "0")
-    week = Calendar.ISO.week_of_year(start_date) |> elem(0)
+    {_iso_year, week} = start_date |> Date.to_erl() |> :calendar.iso_week_number()
 
     "projects/YouTube/Analytics/#{year}-#{month}/weekly-#{week}.md"
   end

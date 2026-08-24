@@ -12,15 +12,13 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
 
   require Logger
 
-  alias BotArmyLibraryRuntime.NATS.Reply
-
   @para_read_subject "para.fs.read"
   @para_write_subject "para.fs.write"
   @media_ingest_subject "media.ingestion.youtube.transcript.get"
   @capture_path "inbox/youtube/capture.md"
   @nats_timeout 30_000
 
-  def handle(msg) do
+  def handle(_msg) do
     with {:ok, content} <- read_capture_file(),
          {:ok, lines} <- extract_lines(content),
          {:ok, youtube_links, remaining_lines} <- separate_youtube_links(lines),
@@ -101,7 +99,7 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
           {:cont, [Map.put(data, "url", url) | acc]}
 
         {:error, reason} ->
-          Logger.warn("[ScheduledIngestionHandler] Failed to fetch #{url}: #{inspect(reason)}")
+          Logger.warning("[ScheduledIngestionHandler] Failed to fetch #{url}: #{inspect(reason)}")
           {:cont, acc}
       end
     end)
@@ -166,7 +164,8 @@ defmodule BotArmyYoutubeManager.Handlers.ScheduledIngestionHandler do
   end
 
   defp make_request(subject, body) do
-    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
+    with {:ok, conn} <-
+           GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       case Gnat.request(conn, subject, body, receive_timeout: @nats_timeout) do
         {:ok, msg} -> {:ok, msg.body}
         {:error, reason} -> {:error, reason}

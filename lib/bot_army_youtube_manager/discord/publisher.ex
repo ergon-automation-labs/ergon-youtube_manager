@@ -22,7 +22,7 @@ defmodule BotArmyYoutubeManager.Discord.Publisher do
         publish_to_discord(message)
 
       _ ->
-        Logger.warn("Summary missing required fields for Discord")
+        Logger.warning("Summary missing required fields for Discord")
         :ok
     end
   end
@@ -34,7 +34,7 @@ defmodule BotArmyYoutubeManager.Discord.Publisher do
 
   def publish_anomalies_to_discord(_), do: :ok
 
-  defp build_summary_embed(period, views, watch_time, trends, markdown) do
+  defp build_summary_embed(period, views, watch_time, trends, _markdown) do
     title = "📊 YouTube Analytics Summary: #{period}"
 
     description =
@@ -89,15 +89,14 @@ defmodule BotArmyYoutubeManager.Discord.Publisher do
 
   defp publish_to_discord(message) do
     subject = "surface.discord.send"
-    encoded = BotArmyLibraryCore.NATS.Encoder.encode(message)
 
-    case BotArmyLibraryCore.NATS.publish(subject, encoded) do
+    case BotArmyLibraryRuntime.NATS.Publisher.publish(subject, message) do
       {:ok, _} ->
         Logger.info("Published message to Discord", subject: subject)
         :ok
 
       {:error, reason} ->
-        Logger.warn("Failed to publish to Discord: #{reason}")
+        Logger.warning("Failed to publish to Discord: #{inspect(reason)}")
         {:error, reason}
     end
   end
