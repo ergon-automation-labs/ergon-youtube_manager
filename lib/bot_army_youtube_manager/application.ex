@@ -19,6 +19,10 @@ defmodule BotArmyYoutubeManager.Application do
     # Note: BotArmyLibraryRuntime.Telemetry and BotArmyLibraryRuntime.NATS.Connection are started
     # by bot_army_runtime automatically — do not add them here.
 
+    # Load configuration from Salt-deployed config file (not env vars)
+    config_data = BotArmyLibraryRuntime.ConfigLoader.load_config()
+    Application.put_env(:bot_army_library_runtime, :config_data, config_data)
+
     children =
       []
       |> maybe_add_repo()
@@ -58,13 +62,19 @@ defmodule BotArmyYoutubeManager.Application do
         # while the consumer is still connecting (not yet subscribed either way).
         {BotArmyLibraryRuntime.LeaderElection,
          service: "youtube_manager",
-         node_name: System.get_env("NODE_NAME", "unknown"),
+         node_name: BotArmyLibraryRuntime.ConfigLoader.get("NODE_NAME", "unknown"),
          default_role:
-           BotArmyLibraryRuntime.LeaderElection.role_from_env("YOUTUBE_MANAGER_NODE_ROLE"),
+           parse_role(
+             BotArmyLibraryRuntime.ConfigLoader.get("YOUTUBE_MANAGER_NODE_ROLE", "primary")
+           ),
          on_role_change: {BotArmyYoutubeManager.NATS.Consumer, :leader_role_changed, []}},
         {BotArmyYoutubeManager.NATS.Consumer, []}
         | children
       ]
     end
   end
+
+  defp parse_role("standby"), do: :standby
+  defp parse_role("primary"), do: :primary
+  defp parse_role(_), do: :primary
 end
