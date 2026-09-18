@@ -1,5 +1,4 @@
 SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../../elixir_bots/scripts)
-MIX ?= /Users/abby/.local/share/mise/shims/mix
 
 .PHONY: setup help deps test dialyzer coverage check format clean clean-releases release publish-release setup-hooks setup-db reset-db logs push-and-publish oauth-init oauth-refresh test-analytics-fetch test-summary-generate schedule-daily-analytics
 
