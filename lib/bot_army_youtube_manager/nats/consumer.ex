@@ -159,7 +159,10 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       "youtube.scheduled.ingest"
     ]
 
-    :ok =
+    # `Registry.register/3` answers `{:ok, pid}`, not `:ok` — matching `:ok` here
+    # crashed this consumer on the leader cast and left the bot advertising
+    # subjects nobody held (measured 0.1.24, 2026-10-24).
+    {:ok, _} =
       Registry.register(
         BotArmyLibraryRuntime.NATS.ConnectionRegistry,
         :nats_resubscribe,
