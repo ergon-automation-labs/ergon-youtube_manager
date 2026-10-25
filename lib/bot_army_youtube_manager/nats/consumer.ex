@@ -132,6 +132,10 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
       "YouTube Manager consumer becoming STANDBY — unsubscribing from business subjects"
     )
 
+    # A standby node must not be re-subscribed by a reconnect: drop the
+    # registration before dropping the sids (see subscribe_business_subjects/1).
+    Registry.unregister(BotArmyLibraryRuntime.NATS.ConnectionRegistry, :nats_resubscribe)
+
     if state.conn do
       Enum.each(state.subscriptions, &Gnat.unsub(state.conn, &1))
     end
@@ -142,15 +146,28 @@ defmodule BotArmyYoutubeManager.NATS.Consumer do
   defp subscribe_business_subjects(state) do
     Logger.info("Connected to NATS, subscribing to topics")
 
+    # Register the subjects against this pid, not just the sids against this
+    # connection: the Connection re-subscribes every registered pid on each new
+    # link. With only a cached `state.conn`, a replaced Gnat process left this
+    # responder deaf while its registry row still advertised the subjects.
+
+    subjects = [
+      "youtube.analytics.fetch",
+      "youtube.summary.generate",
+      "youtube.learning.validate",
+      "youtube.learning.propose",
+      "youtube.scheduled.ingest"
+    ]
+
+    :ok =
+      Registry.register(
+        BotArmyLibraryRuntime.NATS.ConnectionRegistry,
+        :nats_resubscribe,
+        subjects
+      )
+
     subscriptions =
-      [
-        "youtube.analytics.fetch",
-        "youtube.summary.generate",
-        "youtube.learning.validate",
-        "youtube.learning.propose",
-        "youtube.scheduled.ingest"
-      ]
-      |> Enum.map(fn subject ->
+      Enum.map(subjects, fn subject ->
         case Gnat.sub(state.conn, self(), subject) do
           {:ok, sub} ->
             Logger.info("Subscribed to #{subject}")
